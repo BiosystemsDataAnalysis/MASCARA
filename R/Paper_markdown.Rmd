@@ -1,0 +1,2205 @@
+---
+title: "MASCARA: coexpression analysis in data from designed experiments"
+author: "Fred T.G. White, Anna Heintz-Buschart, Lemeng Dong, Harro J. Bouwmeester, Johan A. Westerhuis, Age K. Smilde"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output: 
+  # powerpoint_presentation
+  # ## keep_tex: true
+  # bookdown::pdf_document2:
+    bookdown::word_document2:
+      number_sections: false
+      toc: false
+      classoption:
+        twocolumn
+ # # html_document:
+#  #   toc: true
+#  #   theme: united
+#  #   toc_depth: 3
+#  #   number_sections: true
+# bibliography: MASCARA_refs.json
+bibliography: "`r rbbt::bbt_write_bib('MASCARA_refs.json', overwrite = TRUE)`"
+# csl: oxford-scimed.csl
+#https://raw.githubusercontent.com/citation-style-language/styles/master/apa-6th-edition.csl
+# csl: https://raw.githubusercontent.com/citation-style-language/styles/master/apa-6th-edition.csl
+csl: apa-6th-edition.csl
+keep_md: true
+link-citations: yes
+header-includes:
+  - \usepackage{multicol}
+  - \usepackage{amsmath}
+  - \usepackage{float}
+  - \usepackage{bm}
+  - \newcommand{\hideFromPandoc}[1]{#1}
+  -  \hideFromPandoc{
+       \let\Begin\begin
+          \let\End\end
+          }
+  
+---
+
+
+
+```{r setup, include=FALSE}
+library(knitr)
+# library(here)
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, root.dir=here()
+#pdf_document
+#powerpoint_presentation
+```
+
+
+
+```{r , echo=FALSE, include=FALSE}
+#SOURCE FUNCTIONS FROM EXTERNAL FILE
+source("DATA_SIM_FUNCS.R")
+```
+
+
+
+
+```{r, echo = FALSE, include=FALSE}
+library(devtools)
+library(ggplot2)
+library(MetStaT)
+library(gASCA)
+library(patchwork)
+library(readxl)
+library(ggfortify)
+library(ggrepel)
+library(grid)
+library(gridExtra)
+library(tidyr)
+library(tidyverse)
+library(reshape2)
+library(scales)
+library(matrixStats)
+library(DESeq2)
+library(MASS)
+library(glmnet)
+library(doParallel)
+library(MUVR)
+library(pheatmap)
+library(caret)
+library(mixOmics)
+library(cowplot)
+library(reticulate)
+library(biomformat)
+library(MetStaT)
+library(DiscriMiner)
+library(viridis)
+library(directlabels)
+library(ggpmisc)
+library(DescTools)
+library(data.table)
+library(plotly)
+library(ggbreak)
+
+```
+
+
+# Abstract
+
+
+<!-- Need to change this as it is repeated in introduction -->
+
+Experiments in plant transcriptomics are usually designed to induce variation in a pathway of interest (POI). Harsh experimental conditions can cause widespread transcriptional changes between groups. Discovering coexpression within a POI (here strigolactones) in this context is hampered by the dominant variance induced by the design. Minor changes in experimental conditions not controlled for may affect the plants, leading to small coordinated differences in genes within POIs and related pathways (RPs) between replicate plants in the same controlled experimental condition. These systematic differences between replicates within the same experimental conditions can be used to detect genes from the same POI or RPs. We introduce a novel framework “MASCARA” which combines ANOVA simultaneous component analysis and partial least squares to remove the experimentally induced variance and investigate multivariate relationships in the non-designed variance. MASCARA is tested against a selection of competitors on simulated data, created to mimic a designed transcriptome study. In a coexpression analysis of a real dataset MASCARA detects several uncharacterised but relevant transcripts. Our results indicate that there is sufficient structure left in a typical dataset after correcting for experimental variance and that this residual information is useful to investigate coexpression. 
+
+<!-- \twocolumn -->
+
+\Begin{multicols}{2}
+
+
+
+# Introduction
+<!-- DE or CoE to understand system + feature selection -->
+Plant transcriptome studies typically involve the use of designed experiments which aim to induce variation in pathways of interest (POIs) by controlling one or more experimental factors. This can be done through, for example, varying the level of certain essential nutrients, or knocking out/down a gene within a POI. To explore which pathways are affected by the intervention, gene expression can be measured through RNA sequencing (RNAseq). Analysis of RNAseq data generally adheres to one of two approaches: differential expression analysis (DE; @andersDifferentialExpressionAnalysis2010; @robinsonEdgeRBioconductorPackage2010) or coexpression analysis (CoE; @langfelderWGCNAPackageWeighted2008; @tzfadiaCoExpNetVizComparativeCoExpression2016). DE is used to determine which genes are expressed differently between two or more experimental conditions, highlighting known or novel pathways affected by the experimental conditions. CoE, on the other hand, aims at discovering genes that are part of a partially characterized pathway. Here, the expression profiles of known genes of the POI (termed "baits") are used to detect novel pathway members with similar expression patterns (here termed "spikes").
+
+
+
+```{r nettype, fig.cap= c("Pathway types exemplified, POI; pathway of interest, RP; related pathway, URP; unrelated pathway. A represents hypothetical biological pathways, B highlights the problem with detecting these pathways when dealing with data from designed experiments.")}
+#load network types image
+
+a <- knitr::include_graphics("networktypes.png")
+a
+
+
+```
+
+
+Figure \@ref(fig:nettype) outlines pathway nomenclature that will be used throughout this text. *A* represents a true hypothetical pathway including a pathway of interest (POI), related pathway (RP) and an unrelated pathway (URP). All three types of pathway are assumed to be affected to varying degrees by the experimental design. When dealing with experimentally designed data, we have to consider two key sources of variance: between-group variance and within-group variance. Between-group variance pertains to the differences between experimental groups (or conditions). This type of variance is of interest when conducting DE studies. Within-group variance, on the other hand, is the variance within experimental groups, this is not interesting for DE studies but may contain information useful to CoE. It is the excessive between-group variance that leads to the densely connected nature of *B* from \@ref(fig:nettype). Figure \@ref(fig:withinbetween) exemplifies between-group and within-group driven correlations. The plots show the relationship between two genes of the POI (*A* and *C*) and the relationship between two genes that are not part of the same pathway (*B* and *D*).  The total correlations of both pairs of transcripts are high but the second pair’s correlation is driven by the between-group variation and not by correlations within experimental groups. The within-group correlation is lower than the total in both cases, but there is a clear trend in one condition (facet *C*: P- condition in red) for the first gene pair. Because of this, the within group correlation (r) is higher for the first transcript pair (*C*) than the second (*D*), which makes it possible to discern between genes within a POI or RP and genes that both respond similarly to a treatment (URP). Hence, we need to distinguish *total CoE* which is calculated on the total variance and *within-group CoE* where the focus is on the shared variance within experimental groups. 
+
+<!-- From a plant biology point of view, the between-group variance and the within-group variance can be quite different and related to different parts of the biological system. It is, in fact, expected that there are mechanistic changes that arise from the very different conditions that could alter the coexpression of genes.  -->
+
+
+<!-- , examples include: @miettinenSecoiridoidPathwayCatharanthus2014;.  -->
+
+
+
+
+From a plant biology point of view, the between-group and the within-group variance can be quite different. However, both may contain valuable biological information. The between-group variance is in principle larger because groups are the result of treatments that are usually selected because they affect the genes and/or pathways under investigation. Within-group variance (variance across replicates), if too large, can be an issue in DE analysis, we argue that in co-expression analysis the information present in this variance may be valuable. Variance between replicates is caused by non-controlled variations in plant development and environmental conditions. One replicate within a group may be slightly bigger than the others and therefore respond slightly different to a treatment, for example phosphate deficiency. A larger plant may start to suffer from the deficiency earlier than a smaller plant. This does not imply that the larger plant shows a different biological response to P deficiency. We can assume that the response is similar, but just occurs a bit faster. This in turn implies that the expression of the bait genes are induced a little bit faster than in the other replicates, but this will also be true for the genes that we want to identify with a co-expression analysis. There may be many other factors that are inducing this within-group variance, but it is quite likely that if a factor induces a change in the treatment response in one replicate, that this response difference occurs throughout the entire process or pathway in that one replicate. This means that the within-group variance likely contains valuable information and by averaging out this variance, as is done in differential expression analysis, we are losing information.
+
+<!-- This phenomenon is well documented in @caldanaHighdensityKineticAnalysis2011 where an experiment was performed investigating the effects of temperature and light on arabidopsis plants over time. In this study the authors investigated variable relationships between metabolites and showed these were strongly dependent on the specific levels of the experimental factors, e.g., shikimic acid and phenylalanine were positively correlated at 21 degrees in high light condition, but negatively correlated at 32 degrees in the dark.  -->
+
+<!-- Between experimental groups different pathways are active, whereas within groups more general (undocumented/uncontrolled) ambient factors such as temperature, light intensity and soil water content can affect the plant and its transcriptome in a concerted fashion. In experiments where the intervention causes large between-group differences to many genes, not making the distinction between types of variance can lead to results that contain total CoE associations driven by similar differences between treatment groups.  -->
+
+Considering this within-group variance increases the strength of coexpression analysis, for example, in experiments where the intervention causes large between-group differences in many genes. Not making the distinction between types of variance results in *total CoE* associations driven by the differences between treatment groups as opposed to within group correlations. For example in @haiderTranscriptomeAnalysisPhosphate2023 a phosphate (P) starvation was applied to rice plants to induce strigolactone (SL) biosynthesis, to study the change in gene expression in comparison to control plants with normal supplies of P. The SL pathway is known to be triggered through P deficiency. However, as P is one of three key nutrients for plant growth, deficiency of this nutrient causes widespread differential expression throughout the transcriptome (@wangRoleStrigolactonesDeficiency2021). @haiderTranscriptomeAnalysisPhosphate2023 used ranked correlations, similar to MutRank (@poretskyMutRankShinyWebapplication2020), to determine (total) coexpression candidates. Due to such a strong effect of the experiment, many genes were affected on top of the desired SL genes. This masked the within-group correlation between the baits and the spikes (remaining unknown SL genes). This problematic issue was also highlighted recently by @saccentiWhatCanGo2023 where group sampling assumptions are investigated. Hence, both from a data analysis as well as from a biological perspective it is relevant to make a distinction between the different types of CoE. The focus of this paper will be on developing methods to investigate within-group CoE.
+
+```{r withinbetween, fig.cap= c("Correlation examples, Pearson’s correlation coefficient (r) indicated in facet titles. X axes, expression levels of CCD8 gene in rice, Y axes expression levels of example coexpression candidates. Top row A-B; *total CoE*, bottom row C-D *within-group CoE*. Gene pairs in both A and B have strong total correlations. Correlation in A is also exhibited within a group, B has strong total correlations mainly due to the differences between groups. These examples are indistinguishable from eachother without variance partitioning which has been performed on the same genes in C-D.")}
+
+a <- knitr::include_graphics("within_between_example_2.png")
+a
+
+```
+
+For a successful coexpression analysis it is necessary to have a predefined set of baits that are already known to be involved in the mechanism under study. Methods like ranked correlations and partial least squares regression (PLS; @geladiPartialLeastsquaresRegression1986; @woldCollinearityProblemLinear1984) are able to investigate relationships between a set of baits and the other measured genes. In ranked correlations the relationships are quantified at a bivariate level i.e. bait 1 - candidate 1, bait 1 - candidate 2. In PLS regression the relationships can be investigated in a multivariate way, in its simplest form we can see which genes are most predictive of the expression of one bait. This can be extended to a PLS2 model where relationships are investigated between a set of multiple baits and all other genes. These methods do not by default account for the different variance types discussed above. Hence, they are not directly suitable for within-group CoE. 
+
+The most widely known and applied method that investigates variance sources is the analysis of variance (ANOVA; @searleLinearModels1971). ANOVA simultaneous component analysis (ASCA; @smildeANOVAsimultaneousComponentAnalysis2005) and its extension to imbalanced data via the generalised linear model (ASCA+; @thielASCAAPCAExtensions2017) have been developed to combine principal component analysis (PCA) with ANOVA and can therefore account for experimental design in dimensionality reduction. ASCA is of interest due to the variance partitioning, this is typically used to estimate the effect matrices that are calculated from the design and particularly the within-group variance structure which is maintained in the residuals of the model. Both PLS and ASCA have been used for DE (@augerGeneCoexpressionNetwork2022, @renRNABindingProteins2023, @nuedaDiscoveringGeneExpression2007, @jarmundALASCAPackageLongitudinal2022) and CoE (@guanSRGSSparsePartial2022, @nuedaFunctionalAssessmentTime2009). ASCA and PLS have been combined before in @thissenImprovingAnalysisDesigned2009 creating ANOVA-PLS, however the goal of their study was not coexpression analysis. Neither of these methods are optimal by themselves for CoE in the context of large between group variance with known baits. 
+
+The baits are assumed to be part of the same POI and the remaining uncharacterised spikes (POI or RP genes) are assumed to be numerous. Therefore, both the baits and the remainder of the data could be reduced to linear combinations in order to investigate relationships between a set of baits and putative spikes. We introduce a new data analysis method called multivariate ASCA residual analysis (MASCARA). MASCARA is motivated by four key factors; (1) the presence of dominant between-group variance caused by the setup of the experiment, as well as, (2) ambient variance (structured effects caused by undocumented environmental factors i.e. temperature, light intensity or soil water content) within the replicates of each experimental group, (3) the need to investigate multivariate relationships and (4) the low number of samples. The method capitalises on ASCA to account for an experimental design and the multivariate analysis capability of PLS2 to find uncharacterised POI genes using a set of baits. Instead of focusing on the variance induced by the experimental design, as is a typical use of ASCA, this variance is removed, and the remaining variance is further analysed to investigate the multivariate relationships between baits and the putative spikes in terms of within-group CoE. 
+
+
+To explore the utility of MASCARA, the method will be compared to ASCA, PLS2 and correlation analysis illustrated using an example RNAseq dataset (from @haiderTranscriptomeAnalysisPhosphate2023). Furthermore, this dataset is used as a guide to several simulation studies. For these simulations we emulate both different levels of between- and within-group variance. We test the effects of size of between group differences, number of URP differential genes, measurement noise (random unstructured technical variance), structured ambient variance and number of replicates. The following sections seek to investigate which statistical methods are best suited for biosynthetic POI elucidation when a set of baits is already known and illustrate the use benefit of MASCARA, particularly in data coming from experiments designed for differential expression analysis.
+
+
+
+
+```{r, echo = FALSE, include=FALSE}
+baits <- paste0("X_",c(1989:2000))   #501:510
+
+meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
+colnames(meta) <- c("growth_condition","time","interaction")
+```
+# Materials and Methods
+
+
+<!-- ## Dataset: Experimental Design -->
+```{r, echo = FALSE, include=FALSE}
+META <- as.data.frame(meta[,1:2])
+META$growth_condition[which(META$growth_condition == "1")] <- "P+"
+META$growth_condition[which(META$growth_condition == "-1")] <- "P-"
+
+```
+
+```{r, echo = F}
+META <- META[!duplicated(paste0(META$growth_condition, META$time)),]
+rownames(META) <- NULL
+# kable(META, format = "simple") #replace with CANDTAB like
+
+
+fill <- rep(c("grey95", "grey90"), nrow(META))
+
+theme1 <- gridExtra::ttheme_default(core = list(
+  fg_params = list(fontface=c(rep("plain", nrow(META)))),
+  bg_params = list(fill = fill)),
+  base_size = 10, padding = unit(c(3, 3), "mm"))
+
+META <- gridExtra::tableGrob(META, rows = NULL, theme = theme1)
+title <- textGrob("Design",gp=gpar(fontsize=24))
+META <- gtable::gtable_add_grob(META, title,1,1,1,ncol(META))
+
+rdo <- readRDS("Data_Haider/RICE_DATA_OVERVIEW.RDS")
+levels(rdo[[2]]$data$time) <- c("1","3","7","8")
+
+
+# rdo <- list(META,rdo[[1]],rdo[[2]],rdo[[3]])
+# plot_grid(META)
+# # grid.newpage()
+# # grid.draw(META)
+```
+
+```{r, echo = F}
+# h <- readRDS("heat_comp.RDS")
+# levels(h[[2]]$time) <- c("1","3","7","8")
+# 
+# ann_colours <- list(g_c = c("P-" = "#F8766D","P+" = "lightblue"),
+#                     time = c("1" = "#fde725","3" = "#35b779","7" = "#31688e","8" = "#440154"))
+# 
+# heat <- pheatmap::pheatmap(t(scale(t(h[[1]]))),  #
+#                              cluster_rows = T,
+#                              cluster_cols = F, 
+#                              show_rownames = T, 
+#                              show_colnames = F,
+#                              annotation_col = h[[2]],
+#                            annotation_colors = ann_colours,
+#                            treeheight_row = 10,
+#                            fontsize = 8,
+#                              # annotation_row = anno,
+#                              main = "Strigolactone Gene Expression",silent = T)
+#   
+#   # heat
+#   library(ggplotify)
+#   heat2 <- as.ggplot(heat) + theme(plot.title = element_text(face = "plain"))
+
+# heat2 <- readRDS("heatmap_MASCARA_Fig_2.RDS")
+
+```
+
+## RNAseq - Rice strigolactone dataset @haiderTranscriptomeAnalysisPhosphate2023
+
+In order to guide the simulations we illustrate the characteristics of the simulated data with a real dataset. The real data are a subset of samples from a study in which the root transcriptome of rice plants is measured under two  growth condition (P+/P-) and measured at four time points (1, 3, 7 and 8  days post treatment). At each combination of growth condition and time point, the root transcriptome of three new plants was harvested for RNA sequencing. In this dataset, the curated list of SL pathway genes show a specific profile: low variance baseline expression across all time points in the P+ condition but activation and increasing expression over time with P starvation. 
+
+Figure \@ref(fig:Dataset1-Overview) shows the gene expression levels of 9 strigolactone pathway genes along with 9 highly differential genes that are not part of the SL pathway. While the expression is low in P+ condition a clear increasing time profile can be observed in the P- condition, indicating an interaction between the growth condition and the time factors.
+
+What is notable here is the replicate specific patterns that are apparent amongst the SL genes and largely absent between the SLs (purple) and the non-SL differential genes (green). For example, at time point 3,  most SL genes are expressed lowest in replicate 1 and highest in replicate 3, while at time point 7 replicate 2 has a higher SL gene expression. These within-group patterns are either not shared at all between the SL genes and the other DE genes or to a much lesser extent. This is due to the other genes not directly being part of the same pathway. There are of course other pathways and thus there are still some subtle replicate patterns in the non-SL genes but this effect is much clearer within our pathway of interest. Figure \@ref(fig:ASCA-1) shows the output of the ASCA decomposition in which the PCA scores and loadings of the combined effect of the  Growth condition factor and the interaction of Growth condition and Time is explored. The score plot shows that the replicates of each condition are clustered while the difference between the conditions is much larger. The loading plot shows that although the 9 SL genes are mostly on the outside of the plot, many other genes are as well. Thus many differentially expressed genes are found important that are not part of the SL pathway, in other words ASCA does not detect spike SL genes from others that are similarly or more differentially expressed but not part of the SL pathway.
+
+This marks the goal of this paper, which is to detect within-group coexpressed genes with a set of baits preferentially to other differentially expressed genes that are not part of the same pathway (with no within-group structure).
+
+
+<!-- \onecolumn ### --> 
+
+\End{multicols}
+
+
+
+```{r Dataset1-Overview, echo = F, fig.cap=c("Real data overview. RNAseq of rice root. Heatmap of SL pathway and example highly differential genes.")}
+
+# (rdo[[1]] + heat2)/(rdo[[2]] + rdo[[3]])
+# layout <- rbind(c(1,1,2,2,2,2),
+#                 c(1,1,2,2,2,2),
+#                 c(1,1,2,2,2,2),
+#                 c(1,1,2,2,2,2),
+#                 c(NA,NA,NA,NA,NA,NA),
+#                 c(3,3,3,4,4,4),
+#                 c(3,3,3,4,4,4),
+#                 c(3,3,3,4,4,4),
+#                 c(3,3,3,4,4,4))
+# grid.arrange(rdo[[1]], heat2, rdo[[2]],rdo[[3]], layout_matrix = layout)
+# rdo[[3]]$layers[[1]]$aes_params$colour <- "green"
+# rdo[[3]]$layers[[2]]$aes_params$colour <- "purple" 
+
+##Error in discrete_range() : could not find function "discrete_range"
+# rdo[[3]] <- rdo[[3]] + scale_color_manual(values = c("green","purple"), breaks = c("Other","Pathway"), labels = c("Other","SL")) + theme(legend.title=element_blank())
+
+
+# withr::with_options(
+#   list(ggplot2.discrete.fill = c("green","purple")),
+#   print(rdo[[3]])
+# )
+
+# s <- readRDS("rice_ASCA_scores.RDS")
+# l <- readRDS("rice_ASCA_loadings.RDS")
+
+
+heat2 <- knitr::include_graphics("MASCARA_heatmap.png")
+heat2
+#/(rdo[[2]] + rdo[[3]])
+
+# pdf("Rice_ASCA.pdf")
+# heat2/(rdo[[2]] + rdo[[3]])
+# dev.off()
+
+```
+
+
+
+```{r ASCA-1, echo = F, out.width = '100%', fig.cap=c("Scores and loadings of the ASCA model of the combined effect (condition + condition:time interaction).")}
+knitr::include_graphics("rice_s_l.png")
+
+
+```
+
+\twocolumn
+
+<!-- \Begin{multicols}{2} -->
+
+
+## Simulations
+
+The problem in the real dataset is that the nutrient stress applied causes a major effect on many other genes besides our baits and spikes. This widespread transcriptional regulation can mask the coexpression patterns of interest due to the large number of genes that are upregulated under the stress condition, making it more difficult to detect genes that are responding to a lesser extent, for example the SL pathway. 
+
+The simulations are built upon the results of the ASCA analysis of the combined effect of growth condition and the interaction of growth condition and time. The simulated data is created by simulating score and loading values (as in Figure \@ref(fig:simOverview)) for the combined effect ($\alpha + \alpha\beta$) ) explaining the difference in time profiles of the P+ and P- condition and the main time effect $\beta$, as well as, structured ambient variance ($S$). This is to mimic variance due to gene expression as a function of growth condition and time as well as variance due to coexpression of genes in the same  pathway on top of this experimentally induced DE variance.
+
+## Data simulation 1: Combined effect size and number of differential genes
+
+The first simulation aims to determine how well the methods perform to find coexpressed genes in the presence of a dominant between-group variance structure and increasing numbers of non-pathway differential genes (genes with high between-group correlation but no within-group correlation). The expression levels of differential transcripts is modeled with the scores and loadings of the growth condition and its interaction with time ( $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{P}_{\alpha + \alpha\beta}^T$ ). The disturbing time effect is modeled with scores and loadings ( $\mathbf{T}_{\beta}$  and $\mathbf{P}_{\beta}^T$ ). Also included is some random measurement noise, this is modeled as a matrix $\mathbf{E}$ with normally distributed random values $e_{ij} = \mathcal{N}(0,\sigma^2)$. 
+
+On top of the between-group effect there is an additional a correlation structure applied to the baits and spikes to create a model of coexpression that is independent to the variance induced by the experimental factors ($\mathbf{X}_S = \mathbf{T}_S\mathbf{P}_S^T$). In this simulation we have a set of 4 baits that have positive loadings for the combined effect along with a variable number of other genes - "Combined Effect Responders". For the structured ambient variance; 2 random sample offset vectors in \(\bm{T}_S\) (each column representing an effect caused by ambient conditions) which our baits and spikes contribute to (i.e. green and black bars in Figure \@ref(fig:simOverview) are non zero in \(\bm{P}_S\)). Similarly to the real data, the gene expression values for each experimental condition are simulated with three independent replicates per time-condition-combination. Each simulated data $\mathbf{Y}$ set thus consists of 24 samples and 2000 genes.
+
+
+
+```{r, echo = FALSE}
+X_funced_test2 <- Create_Core(nreps = 3, meta, irr_spikes = TRUE, struc_resid = FALSE,
+                        a_sigma = c(1,1), b_sigma = c(1.5,1.5), e_sigma = c(1,0.3),
+                        noise_sd = 0, EffectSize = c(X_a_ab = 1, time = 0, E = 0, mu = 1),
+                        plot = TRUE)
+```
+
+
+
+The scores matrices $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{T}_{\beta}$ each consist of two orthogonal score vectors and their relative levels are indicated by the colour. The different colours in Figure \@ref(fig:simOverview) represent that the scores are orthogonal to each other. Each small block consists of the same score value for each of the replicates within that condition. Loadings $\mathbf{P}_{\alpha + \alpha\beta}^T$ and $\mathbf{P}_{\beta}^T$  are simulated to create the baits and spikes. As displayed in Figure \@ref(fig:simOverview), the green bar represents 4 baits (or known pathway genes), the black bar represents the 12 spikes (“unknown” genes of interest), yellow represents differentially expressed genes not in SL pathway, and purple; a set of differential genes not in SL pathway with an alternative treatment response. 
+
+In $\mathbf{P}_{\beta1}^T$ the baits, spikes and other DE genes along with the remaining first half have similar positive values (represented by light grey) where the other 1000 have positive values in $\mathbf{P}_{\beta2}^T$ (grey), these are created to emulate the reality of the real data in which many genes are slightly correlated with eachother through the course of development, as well as to account for some nonlinearities which are otherwise ignored by our model. The remaining elements of $\mathbf{P}_{\alpha + \alpha\beta}^T$ and $\mathbf{P}_{\beta}^T$ are populated with zeroes. The $\mathbf{T}$ matrices represent the simulated scores for their respective factors. For blues, reds, greys and golds we have 4 different shades representing 4 unique values per factor level (total 8 unique values where reds and golds are sign flipped blues and greys respectively). Similarly oranges and pinks represent a growth condition independent time profile with four unique values. $\mathbf{E}$ represents random unstructured technical noise and the additional $\bm{1\mu}^T$ term in \@ref(eq:Sim2-bp) represents a mean offset for each gene.
+
+
+
+```{r simOverview, echo=FALSE, fig.cap="Coexpression simulation, simplified overview. Colours correspond to the same genes in the different loading vectors (*P*). Black; baits (known SL genes), green; spikes (unknown SL genes), yellow; other non-pathway DE genes, purple non-pathway DE genes with a different profile. In the score vectors (T); Blues, reds, greys and golds represent experimental conditions, oranges and pinks; time. Each of the textures in the ambient/residual part represent a distinct normally distributed set of random values.", out.width = '100%'}
+knitr::include_graphics("Sim_SL_diagram_simplified.png")
+```
+
+
+\begin{equation}
+\begin{aligned}
+\bm{Y} &= \bm{1\mu}^T + \bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + \bm{E} \\
+\text{where for each element ik or jk:}\\
+&\bm{T}_{S_{ik}} \sim \mathcal{N}(0,1), \quad \bm{P}_{S_{jk}}^{\text{baits,spikes}} \sim \mathcal{N}(0.5,0.2) \\
+\text{and:} &\\
+\bm{P}_{S}^{\text{rest}} &= 0
+\end{aligned}(\#eq:Sim2-bp)
+\end{equation}
+
+<!-- ### Combined effect size and number of differential genes -->
+
+
+
+<!-- \begin{equation} -->
+<!-- \begin{aligned} -->
+<!-- \bm{Y} &= \bm{1\mu}^T + d(\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T) + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + \bm{E} \\ -->
+<!-- \text{where:} &\\ -->
+<!-- \bm{P}_{\alpha + \alpha\beta}^T = \begin{bmatrix} -->
+<!--        \bm{p}_{11} & \bm{p}_{12} \quad \bm{p}_{13} \\ -->
+<!--        \bm{p}_{21} & \bm{p}_{22} \quad \bm{p}_{23} -->
+<!--      \end{bmatrix} -->
+<!-- \end{aligned}(\#eq:nCER) -->
+<!-- \end{equation} -->
+
+
+The issue to address is the presence of many non-pathway differential genes; those that have strong between group correlations but no within group correlation. Here the differential genes relate  to the yellow bar in \@ref(fig:simOverview). We incrementally increase the number of non-zero values and decrease the number of 0 values, which in figure \@ref(fig:simOverview) relates to increasing the size of the yellow bar, as well as varying the F-norm of the combined effect matrix through the scalar parameter *d* below;
+
+\begin{equation}
+\begin{aligned}
+\bm{Y} &= \bm{1\mu}^T + d(\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T) + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + \bm{E} \\
+\end{aligned}(\#eq:nCER)
+\end{equation}
+<!-- equation \@ref(eq:nCER).  -->
+
+<!-- \(\bm{p}_{2}\) remains the same with \(\bm{p}_{21}\) and \(\bm{p}_{23}\) being 0 and \(\bm{p}_{22}\) (purple bar in \@ref(fig:simOverview)) positive. -->
+
+
+
+## Data simulation 2: Replication
+
+In order to evaluate the generalisation of methods and indicate the levels of variance required for optimal performance we conduct a larger scale assay. Here we fix the number of non-pathway DE genes to 30 which corresponds (to the yellow bar size) and the size of the within correlation effect matrix (\(\|\bm{T}_S\bm{P}_S^T\|_F = 0.025\)). We investigate a range of values for sizes of between variance (*d*) and random noise (*l*) across random structures (which correspond to repeated simulations of randomised values for $\mathbf{T}$ matrices). Parameters were adjusted according to \@ref(eq:Test-2) on 20 randomised $\mathbf{T}$ matrices.
+
+\begin{equation}
+\begin{aligned}
+\bm{Y} &= \bm{1\mu}^T + d(\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T) + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + l\bm{E} \\
+\end{aligned}(\#eq:Test-2)
+\end{equation}
+
+
+
+On these 20 datasets, per condition, the replicate number $n_r$ was also varied: the number of replicates $n_r \in 3:15$ per experimental condition were sampled from a maximum $n_r$ of 15.
+
+
+
+
+
+```{r, echo = FALSE}
+# X_funced_classic <- Create_Core(nreps = 3, meta = meta, irr_spikes = TRUE,
+#                         struc_resid = FALSE, noise_sd = 0.75, plot = TRUE)   ## sum(X_funced[[1]] != X_core) = 0 with these parameters
+
+
+X_funced_classic <- Create_Core(nreps = 3, meta, irr_spikes = FALSE, struc_resid = FALSE,
+                        a_sigma = c(1,1), b_sigma = c(1.5,1.5), e_sigma = c(1,0.3),
+                        noise_sd = 0, EffectSize = c(X_a_ab = 1, time = 0, E = 0, mu = 1),
+                        plot = TRUE)
+
+
+# alphaN <- 2
+# betaN <- 4
+# nreps <- 5
+# 
+# meta2 <- cbind.data.frame(rep(c(1,-1), each = betaN*nreps), rep(c(1:betaN), each = nreps), rep(c(-1:-betaN,1:betaN), each = nreps))
+# 
+# colnames(meta2) <- c("growth_condition","time","interaction")
+
+X_funced_test <- Create_Core(nreps = 3, meta, irr_spikes = FALSE, struc_resid = FALSE,
+                        a_sigma = c(1,1), b_sigma = c(1.5,1.5), e_sigma = c(1,0.3),
+                        noise_sd = 0.75, EffectSize = c(X_a_ab = 1, time = 0, E = 1, mu = 1),
+                        plot = TRUE)
+
+
+
+X <- X_funced_classic[[1]]
+P <- X_funced_classic[[2]]
+Pb <- X_funced_classic[[3]]
+```
+
+```{r, echo = F}
+#create "ref" for feature spike information
+
+ref <- cbind.data.frame(Feature = colnames(X), P, Pb)
+
+
+cols <- colnames(ref[,-1])
+ref$Effect <- do.call(paste, c(ref[cols], sep = "_"))
+
+ref$Effect[which(ref$Effect == "0.5_0_0_0.1")] <- "Low PC1"
+ref$Effect[which(ref$Effect == "1_0_0_0.1")] <- "Medium PC1"
+ref$Effect[which(ref$Effect == "1.5_0_0_0.1")] <- "High PC1"
+ref$Effect[which(ref$Effect == "0_0.5_0.1_0")] <- "PC2"
+
+ref$Effect[grep("^0", ref$Effect)] <- "None"
+
+ref$Effect <- factor(ref$Effect, levels = c("Low PC1", "Medium PC1", "High PC1", "PC2", "None"))
+
+
+```
+
+
+
+
+## Analysis and feature selection
+
+### Ranked correlations
+
+Pearson's correlation coefficient is calculated between all columns of \(\bm{Y}\). 
+For example the correlation between a SL gene $j_{sl}$ and a non-SL gene $j_q$ is calculated as:
+
+\begin{equation}
+\begin{aligned}
+  r_{j_{sl}j_{q}} = \frac{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl}) (y_{ij_{q}} - \bar{y}_j_{q})}{\sqrt{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl})^2 \sum_{i=1}^{I} (y_{ij_{q}} - \bar{y}_j_{q})^2}}
+\end{aligned}(\#eq:Pearson)
+\end{equation}
+
+
+For ranked correlations *r* is calculated between each bait and all other genes, with the lowest rank for the highest correlation. Then for each bait the other genes are ranked based on *r*. These ranks are averaged across all baits, similarly to @poretskyMutRankShinyWebapplication2020.
+
+
+### ASCA+
+
+ANOVA simultaneous component analysis (@smildeANOVAsimultaneousComponentAnalysis2005) involves splitting data into effect matrices which are defined by the experimental design structure, after which a PCA is applied to the effect matrices or combination thereof. In ASCA+ this variance partitioning is achieved through the generalised linear model as described in @thielASCAAPCAExtensions2017. ASCA+ addresses the issue of biased effects matrices in unbalanced designs. The following is a summary of the algorithm description provided in @thielASCAAPCAExtensions2017. 
+
+The multivariate generalised linear model (GLM) can be expressed as:
+
+\begin{equation}
+\mathbf{Y} = \mathbf{X} \mathbf{\Theta} + \mathbf{E}
+\end{equation}
+
+where \(\mathbf{Y}\) is the response matrix of dimension \(I \times J\), \(\mathbf{X}\) is the model matrix of dimension \(I \times p\), containing the coded indicator levels for each of the levels for each factor and their interactions,
+ \(\mathbf{\Theta}\) is the parameter matrix of dimension \(p \times J\) and
+ \(\mathbf{E}\) is the error matrix of dimension \(I \times J\).
+
+Through Ordinary Least Squares (OLS) we can obtain the (unbiased) estimators of the model parameters:
+
+\begin{equation}
+\hat{\mathbf{\Theta}} = (\mathbf{X}^\intercal \mathbf{X})^{-1} \mathbf{X}^\intercal \mathbf{Y}
+\end{equation}
+
+The effect matrices for different terms of the model can be obtained as:
+
+\begin{equation}
+\mathbf{M}_f = \mathbf{X}_f^* \hat{\mathbf{\Theta}}
+\end{equation}
+
+where: \(\mathbf{M}_f\) is the effect matrix corresponding to effect \(f\), \(\hat{\mathbf{\Theta}}\) is the matrix of estimated parameters obtained from OLS and \(\mathbf{X}_f^*\) is a new model matrix obtained by keeping in \(\mathbf{X}\) only the block \(\mathbf{X}_f\) and replacing all other columns with zeros as per: 
+
+\(\mathbf{M}_f=(0|\mathbf{X}_f |0)\mathbf{\hat{\Theta}} = \mathbf{X}_f \mathbf{\hat{\Theta}}_f\)
+
+The above is achieved through the sum coded indicator matrix as illustrated further in @thielASCAAPCAExtensions2017.
+
+Furthermore, the matrix \(\mathbf{E}\) is estimated as the residual matrix of the model:
+
+\begin{equation}
+\begin{aligned}
+\hat{\mathbf{E}} = \mathbf{Y} - \mathbf{X} \hat{\mathbf{\Theta}}
+\end{aligned}
+\end{equation}
+
+<!-- This approach provides a general solution to build the ASCA effect matrices for any fixed effects ANOVA model. -->
+
+
+
+
+### PLS regression - canonical mode
+
+
+Partial Least Squares canonical mode (PLS2) is a multivariate regression technique used for modeling relationships between two sets of variables, \( \mathbf{Y} \) and \( \mathbf{B} \). 
+
+
+After splitting the data into the response matrix (containing only baits) \( \mathbf{B} \) (the green bar in the loadings) and the predictor matrix (containing the rest of the data) \( \mathbf{Y} \), resulting in the model of the data:
+
+\begin{equation}
+\begin{aligned}
+\mathbf{Y} = \mathbf{T}\mathbf{P}^T + \mathbf{E}_Y \\
+\text{and} \\
+\mathbf{B} = \mathbf{T}\mathbf{Q}^T + \mathbf{E}_B \\
+\end{aligned}
+\end{equation}
+
+
+This model is estimated in our work as follows:
+
+<!-- 2. Center and scale both \( \mathbf{X} \) and \( \mathbf{Y} \). -->
+1. Initialize \( \mathbf{Y}_0 \) to \( \mathbf{Y} \) and \( \mathbf{B}_0 \) to \( \mathbf{B} \).
+2. Iteratively perform the following steps for \( k = 1, 2, \ldots \):
+   a. Compute the singular value decomposition (SVD) of \( \mathbf{Y}_{k}^{T} \mathbf{B}_{k} \) to obtain the left and right singular vectors \( \mathbf{u}_k \) and \( \mathbf{v}_k \) respectively.
+   b. Project \( \mathbf{Y}_{k} \) and \( \mathbf{B}_{k} \) onto the first left and right singular vectors (\( \mathbf{u}_k \), \( \mathbf{v}_k \)) to obtain the scores \( \bm{t}_k = \mathbf{Y}_{k} \mathbf{u}_k \) and \( \bm{w}_k = \mathbf{B}_{k} \mathbf{v}_k \).
+   c. Perform linear regression of \( \mathbf{Y}_k \) and \( \mathbf{B}_k \) onto their corresponding scores \( \bm{t}_k \) and \( \bm{w}_k \) to obtain the respective loadings \( \bm{p}_k \), and \( \bm{q}_k \).
+   d. Deflate \( \mathbf{Y}_k \) and \( \mathbf{B}_k \) by removing the variance explained by the $k^{th}$ pair of scores (\( \bm{t}_k \), \( \bm{w}_k \)), and use the deflated matrices as inputs for the next iteration.
+
+PLS2 aims to maximize the covariance between the scores \( \bm{t}_k \) and \( \bm{w}_k \) at each iteration. In the following simulations and application the number of components calculated by PLS2 is set to 2. 
+
+<!-- although there are methods to optimally select this number, such as; (REFS). -->
+
+
+
+### Variable importance in projection (VIP)
+
+In this work genes are selected in both ASCA+ and PLS through VIP which is a way to measure the contributions of each variable to the underlying models. According to:
+
+$\text{VIP}_{j} = \sqrt{\frac{ \sum_{k=1}^{K} \mathbf{h}^2_{jk} \cdot \text{VE}_{k}}{\text{VE}_{total} \cdot K}}$
+
+Where k=1...K represents the number of components in the respective models, j indexes a gene,  \(\bm{h}\) is substituted for the loadings or weights (for ASCA+ and PLS respectively) and VE is the variance explained, where $VE_{k}$ is the amount of variance explained by component k and $VE_{total}$ is the variance explained by the whole model. In ASCA+ we calculate the VIP scores in the latent space of \(\bm{Y}_{\alpha + \alpha\beta}\) as described in @thielASCAAPCAExtensions2017. In PLS we use the VE from the latent space of \(\bm{B}\) using the weights ($\mathbf{U}$) from the latent space of \(\bm{Y}\).
+
+
+
+### Multivariate ASCA residual analysis (MASCARA)
+
+
+MASCARA combines the effect estimation with GLM (from ASCA+) with PLS2. The method entails estimating effect matrices with the GLM step of ASCA+ as described above to obtain the estimated residual matrix \(\hat{\mathbf{E}}\). The variance explained by all effect matrices of the experimental factors and interactions is removed. What remains in this \(\hat{\mathbf{E}}\) matrix is individual variance of each plant that is assumed to contain not just random technical variance but some form of structured variance induced by ambient (uncontrolled) effects. The matrix \(\hat{\mathbf{E}}\) is used as input to PLS2  after being split into baits and remainder.
+
+The genes are ranked based on target projection (@kvalheimInterpretationPartialLeast2010) of the loadings $\mathbf{P}$ onto the mean vector of the bait loadings $\mathbf{Q}$ in 2 components: $\mathbf{\mu}_{baits} = \begin{bmatrix} \mathbf{\bar{q}}_1 \\ \mathbf{\bar{q}}_2 \end{bmatrix}$ where $\mathbf{\bar{q}}_k$ is the mean of the $k^{th}$ component of the PLS2 model. The target projected loadings $\mathbf{P}_{TP}$ are calculated such that $\mathbf{P}_{TP} = \left( \frac{\mathbf{P} \cdot \mathbf{\mu}_{baits}}{\|\mathbf{\mu}_{baits}\|^2} \right)$. Higher values in the target projection equate to stronger positive associations with the center of the baits. Large negative values can also be interesting candidates for strong negative associations, although non positive associations are not considered here. This approach allows a general direction in the PLS space to be defined by multiple baits and assumes that these baits are highly correlated with one another. The MASCARA pipeline in exemplified in Figure \@ref(fig:MASCARAOVERVIEW).
+
+```{r MASCARAOVERVIEW, echo = F, fig.cap="MASCARA pipeline overview"}
+a <- knitr::include_graphics("MASCA_Pipeline_overview.png")
+a
+
+
+```
+
+
+## Performance Evaluation
+
+
+To evaluate performance we use log2 of the geometric mean rank ($\bar{\gamma}$), defined as: 
+$\bar{\gamma} = log2((\prod_{i=1}^{n}\gamma_{i})^{1/n})$ 
+for each spike *i* for n spikes.
+
+For the real data, since the ground truth is not known we visualise relationships between baits and genes detected by the different methods rather than using a metric. 
+
+# Results
+
+
+
+
+```{r, echo = FALSE}
+#### VST inverse #######
+#mean/sd relationship plots
+##Power transformation of counts/concentration matrix
+m_sd_n <- M_SD(X, meta)
+
+plot_normal <- m_sd_n[[3]]
+```
+
+```{r, echo=FALSE, include=FALSE}
+db <- cbind.data.frame("Sample" = c(1:24),meta[,1:2],X)
+db[,1:3] <- apply(db[,1:3],2,as.character)
+mc <- reshape2::melt(db)
+colnames(mc)[4:5] <- c("Feature","Expression")
+```
+
+```{r, echo = FALSE}
+dist_norm <- ggplot(mc, aes(x = Expression)) + geom_density(alpha = 0.4)+
+  scale_y_continuous(labels = percent_format()) +
+  theme_bw()+
+  ggtitle("Core Distribution")
+```
+
+
+```{r, echo=FALSE}
+dist_nb <- ggplot(mc, aes(x = Expression)) + geom_density(alpha = 0.4)+
+  scale_y_continuous(labels = percent_format()) +
+  scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
+  theme_bw()+
+  ggtitle("NB transformed")
+
+# (dist_norm + plot_normal)  # no noise data so cannot plot mean sd relationships here
+```
+
+
+
+```{r, echo = FALSE, include = F}
+m <- meta
+m[,1:2] <- lapply(meta[,1:2],factor)
+
+res_ASCAplus_nb <- ASCA_decompose(d = m[,1:2], x = X_funced_test2[[1]],
+                               f = "growth_condition + time + growth_condition:time")
+```
+
+
+```{r, echo = FALSE}
+# comb_terms <- ASCA_combine_terms(res_ASCAplus_nb, c("growth_condition","growth_condition:time"))
+# svd_test <- ASCA_svd(comb_terms$decomposition$`growth_condition+growth_condition:time`)
+#
+
+ minT <-  res_ASCAplus_nb$decomposition$growth_condition + res_ASCAplus_nb$decomposition$`growth_condition:time`
+  PCD <- prcomp(minT)
+
+  newdata <- res_ASCAplus_nb$decomposition$growth_condition + res_ASCAplus_nb$decomposition$`growth_condition:time` + res_ASCAplus_nb$residuals
+
+  #this predict method does matrix multiplication of the input (new data) and the rotation (loading) matrix
+  #projects the data into the PCA space
+  PCDE <- predict(PCD, newdata)
+  # PCDE <- cbind(m[,1:2], PCDE)
+
+```
+
+
+```{r, echo = F}
+a_c.PCD <- PCD
+
+######
+
+
+SL_plot <- function(PCD,meta){
+  
+  a_c.PCD <- PCD
+  meta <- as.data.frame(meta)
+  a_c.PCD$x <- cbind.data.frame(time = meta$time, growth_condition = meta$growth_condition, a_c.PCD$x)
+  
+  a_c.PCD$rotation <- cbind.data.frame(paste0("X_",c(1:dim(X)[2])), a_c.PCD$rotation)
+  colnames(a_c.PCD$rotation)[1] <- "Feature"
+  a_c.PCD$rotation$Feature <- factor(a_c.PCD$rotation$Feature, levels = a_c.PCD$rotation$Feature)
+  
+  ## *Recreated* simulated data, scores and loadings in PCs 1 and 2
+  
+  t1_rec <- ggplot(a_c.PCD$x, aes(x = time, y = PC1, group=growth_condition, colour=growth_condition)) +
+    geom_line() +
+    theme_classic() +
+    theme(legend.position = "none")
+  
+  t2_rec <- ggplot(a_c.PCD$x, aes(x = time, y = PC2, group=growth_condition, colour=growth_condition)) +
+    geom_line() +
+    theme_classic() +
+    theme(legend.position = "none")
+  
+  ###
+  
+  p1_rec <- ggplot(a_c.PCD$rotation[which(abs(a_c.PCD$rotation$PC1) > 0.05),], aes(x = Feature, y = PC1)) +     #CHANGE to include candidate selection here
+    geom_bar(stat="identity") +
+    theme_classic() +
+    theme(axis.text.x = element_blank())
+  
+  p2_rec <- ggplot(a_c.PCD$rotation[which(abs(a_c.PCD$rotation$PC2) > 0.05),], aes(x = Feature, y = PC2)) +
+    geom_bar(stat="identity") +
+    theme_classic() +
+    theme(axis.text.x = element_blank())
+  
+  
+  plot <- (t1_rec | t2_rec) / (p1_rec | p2_rec)
+  return(plot)
+  
+}
+
+
+######
+
+SL <- SL_plot(a_c.PCD, meta)
+```
+
+```{r, echo = F}
+
+ve1 <- paste0(round(summary(a_c.PCD)$importance[2,1:2] * 100, digits = 2), "%")
+l <- loadingplot(a_c.PCD$rotation, meta, baits, ve1, ref, aes(x = PC1,y = PC2, colour = Effect))
+s <- scoreplot(PCDE, meta, ve1, aes(x= PC1, y = PC2, colour = growth_condition, shape = time))
+
+#+ guide_area()# + plot_layout(design = design)
+qq <- qqplot(newdata, meta, aes(x=X_2000, y= X_1999, colour = growth_condition, shape = time))
+
+
+ASCA_cands <- get_ASCA_cands(a_c.PCD,  distance_calc = T, baits = baits[9:12], ret_candN = 10)
+# colnames(ASCA_cands) <- c("VIP", "PC1","PC2")
+#kable(head(ASCA_cands,10))
+
+# CAND_TAB <- round(ASCA_cands[1:10,], 4)
+CAND_TAB <- cbind.data.frame(rownames(ASCA_cands), ASCA_cands)
+CAND_TAB <- CAND_TAB[1:10,]
+
+colnames(CAND_TAB)[1] <- "Feature"
+
+
+fill <- rep(c("grey95", "grey90"), nrow(CAND_TAB))
+fill[which(CAND_TAB$Feature %in% baits)] <- "yellow"
+
+theme1 <- ttheme_default(core = list(
+  fg_params = list(fontface=c(rep("plain", nrow(CAND_TAB)))),
+  bg_params = list(fill = fill)),
+  base_size = 5, padding = unit(c(2, 2), "mm"))
+
+candtab <- gridExtra::tableGrob(CAND_TAB, rows = NULL, theme = theme1)
+
+f <- F1_plot(ASCA_cands, baits, 500)[[2]]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r,echo = F}
+# N_T <- readRDS("Noise_Sim_220909.RDS")
+
+Noise_Tests <- readRDS("Noise_Sim_Coexp_23_07_26_11.RDS")  #Noise_Sim_Coexp_23_06_12.RDS -> updated Beta and VIP for PLS   ##Noise_Sim_Coexp_23_06_14_2.RDS
+
+
+
+names(Noise_Tests) <- c("ASCA", "PLS", "Correlations", "MASCARA")
+
+Noise_Tests <- Noise_Tests[c("ASCA", "PLS", "Correlations","MASCARA")]
+# names(Noise_Tests) <- ms$Method
+Noise_Tests <- lapply(Noise_Tests, narm, keep_col1 = T)
+
+# y <- rep((c(0:20)/33.3333333333333333333333333333333))
+# x <-  c(0:10) * 10
+# 
+# 
+# x <- rep(x,each = length(y))
+# y <- rep(y, length(unique(x)))
+# 
+# 
+# z <- x*y
+# 
+
+# y <- rep((c(0:20)/33.3333333333333333333333333333333),40)
+# x <-  c(1:10) * 10
+# x <- rep(x,each = 84)
+# 
+# z <- x*y
+
+
+# y <- rep((c(0:20)/10))
+# x <-  c(0:10) * 10 
+# 
+# 
+# x <- rep(x,each = length(y))
+# y <- rep(y, length(unique(x)))
+# 
+# 
+# z <- x*y
+
+# y <- rep((c(0:10)/33.3333333333333333333333333333333)*2)
+# x <-  c(0:10) * 5
+# 
+# 
+# x <- rep(x,each = length(y))
+# y <- rep(y, length(unique(x)))
+# 
+# 
+# z <- x*y
+
+y <- rep((c(0:10)/50))
+x <-  c(0:10) * 5  #5
+
+
+x <- rep(x,each = length(y))
+y <- rep(y, length(unique(x)))
+
+
+z <- x*y
+
+
+
+main_lev  <-  z
+
+# E_lev <- c(0:10)/20
+ERs <- x
+
+# X_funced <- list()
+# names <- c()
+# i <- NULL
+# l <- 1
+# for(i in 1:length(ERs)){
+# 
+# 
+#     
+#     names[l] <- paste(ERs[i],main_lev[i], sep = "_")
+#     l <- l + 1
+#     
+#     
+# 
+#   
+#   
+# }
+```
+
+```{r}
+names <- paste(ERs,main_lev, sep = "_")
+
+
+# Noise_Tests <- lapply(Noise_Tests, function(x) names(x) = names)
+
+i <- NULL
+for(i in 1:length(Noise_Tests)){
+
+  colnames(Noise_Tests[[i]]) <- names
+
+
+}
+#########
+
+i <- NULL
+RES <- data.frame(matrix())
+for(i in 1:1){
+  res <- Noise_Tests[[i]][16,]
+  RES <- cbind.data.frame(RES,t(res))
+
+
+}
+
+
+for(i in 2:4){
+  res <- Noise_Tests[[i]][12,]
+  RES <- cbind.data.frame(RES,t(res))
+
+}
+
+
+RES <- RES[,-1]
+colnames(RES) <- names(Noise_Tests)
+```
+
+```{r, echo = F}
+RES <- cbind.data.frame(rownames(RES), RES)
+colnames(RES)[1] <- "Cond"
+
+# RES$Noise <- ERs
+# RES$Main <- main_lev
+
+#####
+# 
+# RES$Noise <- gsub("_.*", "",RES$Cond)
+# RES$Noise <- gsub("X","",RES$Noise)
+# # RES$Resid <- gsub("E_","",RES$Resid)
+# 
+# # RES$Feature <- gsub(".*_","",RES$Cond)
+# 
+# RES$Main <- gsub(".*_","", RES$Cond)
+# # RES$Main <- gsub("X","", RES$Main)
+# 
+mRES <- melt(RES)
+
+
+colnames(mRES)[c(2,3)] <- c("Method","F1")
+
+mRES$Noise <- rep(ERs, 4)
+mRES$Main <- rep(main_lev, 4)
+```
+
+
+```{r, echo=FALSE}
+# mRES$Noise  <- as.numeric(mRES$Noise)
+# mRES$Main  <- as.numeric(mRES$Main)
+mRES$F1 <- as.numeric(mRES$F1)
+
+colnames(mRES)[3] <- "Rank_Product"
+mRES$Rank_Product <- log2(mRES$Rank_Product)
+# colnames(mRES)[5] <- "Rank_Product"
+
+mRES$Size_num <- rep(y, 4)
+```
+
+```{r}
+
+mRES <- mRES[-which(mRES$Main == 0),]
+mRES <- mRES[-which(mRES$Size_num >= 0.15),]
+mRES <- mRES[-which(mRES$Noise >=35),]
+
+
+max <- max(mRES$Rank_Product)
+min <- min(mRES$Rank_Product)
+
+```
+
+
+```{r, echo=FALSE}
+
+
+i <- NULL
+methods <- unique(mRES$Method)
+plots <- list()
+for(i in 1:length(methods))
+  plots[[i]] <- ggplot(mRES[which(mRES$Method == methods[i]),], aes(x = Noise, y = Size_num))+ #, colour = Rank_Product
+  # geom_point( alpha = 1, size = 10, shape = 15) + #position = "jitter",
+    geom_tile( aes(fill = Rank_Product)) + #position = "jitter",
+
+  # scale_x_discrete(guide = guide_axis(angle = 90, check.overlap = T))+
+  # scale_color_continuous(type = "viridis", limits = c(min,max))+
+    scale_fill_continuous(type = "viridis", limits = c(min,max))+
+
+  ggtitle(methods[i]) +
+  ylab("Effect Size") + 
+  xlab("Num. DEs") +
+  theme_bw() +
+  theme(plot.title = element_text(size=8)) 
+
+
+```
+
+
+
+## Simulation 1: Combined effect size and number of differential genes
+
+For this simulation we have some experimental variance for the combined effect and time ($\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T$ and $\bm{T}_{\beta}\bm{P}_{\beta}^T$ respectively) a fixed amount of random noise \(\bm{E}\) and a fixed amount of structured residual variance $\bm{T}_S\bm{P}_{S}^T$, within which our 4 baits and 12 spikes share a correlation structure. This reflects the situation expected from the real data example - drastic effect caused by nutrient deficiency, which also activates the SL pathway. The pathway genes are expected to share some variance that is independent to the experiment - the 4 baits and 12 spikes load on to the structured part of the noise $\bm{T}_S\bm{P}_{S}^T$.
+
+```{r tc, echo = F, fig.cap= "Results of simulation 1 for all 4 methods. The geometric mean rank as a function of the number of differentially expressed genes (x-axis) and combined effect size (y axis)."}
+wrap_plots(plots) + plot_layout(guides = "collect")
+
+# pdf("coexp.pdf")
+# wrap_plots(plots) + plot_layout(guides = "collect")
+# dev.off()
+
+```
+
+<!-- The results of simulation 1 were expected to show no effect for MASCARA,  due to the capturing and removal of the dominant experimental variance, but a decrease in performance for the other methods with increasing numbers of non-pathway DE genes and increasing combined effect size it becomes more difficult to detect the true coexpression pattern, as this is masked. -->
+
+We can see in Figure \@ref(fig:tc) that MASCARA was neither affected by the presence of an increasing number of non-pathway DE genes nor the size of this effect. Correlations, ASCA and PLS, however, all showed the expected breakdown in performance due to the injection of more non-pathway DE genes. This was the expected result as the between group variance is removed with MASCARA.
+
+
+
+
+## Simulation 2: Replication
+
+The results from above were obtained from datasets with varying noise, with core aspects such as the underlying structure, the number of replicates, the strength of correlation between variables, and the size of the noise remained fixed. With the following, we test the feasibility range of MASCARA with respect to the ratio of 3 key variance parameters namely:
+
+1. Within group correlation structure
+2. Between group correlation structure
+3. Random noise
+
+Here we set a fixed size of within group correlation structure (\(\|\bm{T}_S\bm{P}_{S}^T\|_F = 0.025\)) as well as number of non-pathway DE genes to 30 (yellow bar size \@ref(fig:simOverview)) across all iterations of this test. We vary the sizes of the other two variance parameters (*d* and *l*). Furthermore we also show the effect of replicate number and demonstrate that MASCARA (along with the other methods) can be applied to data with generic profiles, not limited to the specific structures that were used to demonstrate the differences in coexpression analysis above. Here we create 20 datasets with random combined effect and within group correlation structures.
+
+
+
+```{r, echo = F}
+#30 random initial scores, similar noise 
+#parameters, 3-30 replicates per condition. 
+Rep_Tests <- readRDS("Noise_Sim_23_07_29_Replicate_Tests.RDS")  #_3  Noise_Sim_23_06_23_Replicate_Tests.RDS
+names(Rep_Tests) <- c("ASCA", "PLS","Correlations","MASCARA")
+
+
+# names(Noise_Tests) <- ms$Method
+Rep_Tests <- lapply(Rep_Tests, narm, keep_col1 = T)
+
+names <- c()
+l <- 1
+
+# ERs <- c(5,25,50)
+
+y <- rep(c(0.0004,0.002, 0.01),3)      
+
+x <- rep(25,9)
+
+nse <- rep(c(0.1,0.2,0.3), each = 3)
+
+DS <- c(1:9)
+
+
+main_lev <- x*y
+
+ERs <- DS
+
+
+a <- NULL
+for(a in 1: length(ERs)){
+  i <- NULL
+for(i in 1:20){
+  j <- NULL
+  for(j in 3:15){
+    name <- paste0("Dataset_",i,"_Rep_",j,"_nCERS_",ERs[a])
+        name <- paste0("Dataset_",i,"_Rep_",j,"_nCERS_",ERs[a])
+
+    names <- c(names,name)
+  }
+}
+
+}
+```
+
+```{r}
+
+i <- NULL
+for(i in 1:length(Rep_Tests)){
+  colnames(Rep_Tests[[i]]) <- names
+}
+
+
+#
+
+# Dm <- mean(data.matrix(RF_RES[12,]))
+# Em <- mean(data.matrix(COEXP_HIGH_RES[8,]))
+
+# get F1 scores for 12 and 8 respectively for linegraph with error
+
+i <- NULL
+RES <- data.frame(matrix())
+for(i in 1){
+  res <- Rep_Tests[[i]][16,]
+  RES <- cbind.data.frame(RES,t(res))
+
+
+}
+for(i in 2:4){
+  res <- Rep_Tests[[i]][12,]
+  RES <- cbind.data.frame(RES,t(res))
+
+}
+
+
+RES <- RES[,-1]
+colnames(RES) <- names(Rep_Tests)
+
+```
+
+
+```{r, echo = F}
+RES <- cbind.data.frame("Replicate_Number" = gsub(".*Rep_","",rownames(RES)), RES)
+RES <- cbind.data.frame("nCERs" = gsub(".*ERS_","",RES$Replicate_Number), RES)
+RES$Replicate_Number <- gsub("_nCE.*","",RES$Replicate_Number)
+
+
+mRES <- melt(RES)
+colnames(mRES)[3:4] <- c("Method","F1_Score")
+```
+
+
+
+
+
+```{r, echo = F}
+
+# mRES <- melt(new_res)
+
+
+# colnames(mRES)[2:3] <- c("Method","F1_Score")
+# mRES$F1_Score[which(mRES$F1_Score == 0)] <- 0.001
+
+mRES$Replicate_Number <- as.numeric(mRES$Replicate_Number)#, c(3:30))
+```
+
+
+
+
+
+```{r}
+
+# MR <- mRES
+# 
+# mRES <- mRES[-which(mRES$Method == "ASCA"),]
+orders <- c(7,8,9,4,5,6,1,2,3)
+
+max <- max(log2(mRES$F1_Score) + 1)
+i <- NULL
+l <- 1
+One_Balance <- list()
+for(i in orders){
+  
+  One_Balance[[i]] <- ggplot(mRES[which(mRES$nCERs == orders[i]),], aes(x = Replicate_Number, y = log2(F1_Score), colour = Method)) +
+  # geom_point()+
+  scale_color_viridis(discrete = T)+
+  # geom_line() +
+    # geom_point() +
+    
+    stat_summary() +
+    
+    # geom_errorbar(mappings = aes(x = Replicate_Number, y = log2(F1_Score)),stat = "summary",
+    #               fun.min = function(z) {quantile(z,0.25)},
+    #               fun.max = function(z) {quantile(z,0.75)},
+    #               fun = median) +
+  # geom_smooth( se = F)+    # aes(outfit=fit<<-..y..)
+        ylim(0,max ) +
+    # ggtitle("") +
+  labs(subtitle = paste0("CE = ", main_lev[l], " E = ", nse[l]))+
+  # ylab("Rank Product") + 
+  theme_bw() +
+      theme(axis.title = element_blank()) 
+
+  l <- l + 1
+  
+}
+```
+
+
+```{r}
+
+ Two_Balance <- ggplot(mRES, aes(x = Replicate_Number, y = log2(F1_Score), colour = Method)) +
+  # geom_point()+
+  scale_color_viridis(discrete = T)+
+  # geom_line() +
+    # geom_point() +
+    
+    stat_summary() +
+    
+    # geom_errorbar(mappings = aes(x = Replicate_Number, y = log2(F1_Score)),stat = "summary",
+    #               fun.min = function(z) {quantile(z,0.25)},
+    #               fun.max = function(z) {quantile(z,0.75)},
+    #               fun = median) +
+  # geom_smooth( se = F)+    # aes(outfit=fit<<-..y..)
+        ylim(0,max ) +
+    # ggtitle("") +
+  labs(subtitle = paste0("CE = ", main_lev[l], " E = ", nse[l]))+
+  # ylab("Rank Product") + 
+  theme_bw() +
+  facet_wrap(~ nCERs)
+      # theme(axis.title = element_blank()) 
+
+
+
+
+```
+
+
+```{r repres, echo = F, fig.cap= "Simulation 3 results. Replications and variance type feasibility ranges. X axes; replicate number, y axes log2 transformed rank product. Each facet is created with set parameters for combined effect size ($CE = \\|\\mathbf{T}_{\\alpha + \\alpha\\beta}\\mathbf{P}_{\\alpha + \\alpha\\beta}^T\\|_F$) and random gaussian noise size ($E = \\|\\mathbf{E}\\|_F$). Dots are median performance across 20 random structures."}
+
+
+# One_Balance# + AUCs #+ plot_layout(guides = "collect")
+
+ps <- patchwork::patchworkGrob(wrap_plots(One_Balance) + plot_layout(guides = "collect"))  #, heights = unit(c(5), c("cm")), widths = c(5))
+
+
+test_patch <- (One_Balance[[1]] + One_Balance[[2]] + One_Balance[[3]]  + ylab(NULL))
+              # (One_Balance[[4]] + One_Balance[[5]] + One_Balance[[6]]  + ylab(NULL))/
+              # (One_Balance[[7]] + One_Balance[[8]] + One_Balance[[9]]  + ylab(NULL)) # + plot_layout(guides = "collect")
+
+# One_Balance[[1]] + One_Balance[[2]]/
+#   One_Balance[[3]] + plot_layout(guides = "collect")
+
+
+# ps1 <- grid.arrange(ps, left = "Rank Product", bottom = "Replicate Number                     ")
+
+a <- knitr::include_graphics("C:/Users/fwhite/Documents/replication_res.png")
+a
+
+
+```
+
+<!-- In Figure \@ref(fig:repres)  -->
+
+It was expected that all geometric mean ranks converge towards a minimum with increasing numbers of replicates, see \@ref(fig:repres). Perfect detection of 12 spikes in top 12 candidates is achieved with a log2 geometric mean rank of 2.402955, MASCARA this was able to achieve this however the other methods were perturbed by the presence of the 30 non spike differential genes.With more replicates MASCARA always outperforms competitors. With higher combined effect size (CE) MASCARA outperforms the other methods but its performance is affected by random noise (E) size. 
+
+In simulation 2 we fixed the number of differential genes to 30, however this is less than 2% of the total number of genes in each dataset. In the real data example more than 10% of of the total number of genes are differentially expressed. As shown in simulation 1 (Figure \@ref(fig:tc)) higher numbers of DE genes results in higher geometric mean rank of the spikes for correlations, ASCA and PLS.  MASCARA is designed specifically to mitigate the presence of large numbers of differential genes. Here we show that this is achieved.
+
+
+
+
+# Real Data Applications
+
+It is apparent that MASCARA has a particular use case for coexpression analysis in data where there is a lot of experimentally induced between-group variance across many genes as well as some within-group correlation structure shared between pathway genes that is caused by independent non-controlled ambient factors.
+
+Here we illustrate an application of MASCARA to the dataset from @haiderTranscriptomeAnalysisPhosphate2023. For this we take 4 core strigolactone genes (Os11t0587000, Os04t0550600, Os01t0746400 and Os01t0700900 of the 9 used for illustrations in figures \@ref(fig:Dataset1-Overview) and \@ref(fig:ASCA-1)) as baits and investigate their relationship with top candidate genes. 
+
+<!-- As well as, detection of 5 other genes known to be involved in the pathway (expression profiles shown in heatmap of Figure \@ref(fig:Dataset1-Overview)). -->
+
+```{r real data import}
+
+X <- readRDS("Data_Haider/Rice_Counts4ASCA.RDS")
+meta <- readRDS("Data_Haider/Rice_Meta4ASCA.RDS")
+colnames(meta)[c(6,7,11)] <- c("gc","time","growth_condition")
+
+baits <- paste0(c("Os11t0587000","Os04t0550600","Os01t0746400","Os01t0700900"),"-01") 
+#D27 CCD7 CCD8 CYP711A2
+# baits2 <- c("Os01t0700300", "Os01t0701700")  
+baits2 <- c("Os01t0700300-00", "Os02t0817900-01")  # identified methyltransferases
+
+
+#remove RP samples
+X <- X[-which(meta$growth_condition == "PR"),]
+meta <- meta[-which(meta$growth_condition == "PR"),]
+
+meta$time <- as.character(meta$time)
+
+meta$time[which(meta$time == "8")] <- "1"
+meta$time[which(meta$time == "10")] <- "2"
+meta$time[which(meta$time == "14")] <- "3"
+meta$time[which(meta$time == "15")] <- "4"
+
+
+
+# REF <- readRDS("ref4ASCA_rice.RDS")
+ref <- cbind.data.frame(Feature = colnames(X), feature = colnames(X), Baits = colnames(X))
+
+# ref$Baits[-which(ref$Baits %in% c(baits,baits2))] <- "non-bait"
+# ref$Baits[which(ref$Baits %in% baits)] <- "bait"
+# ref$Baits[which(ref$Baits %in% baits2)] <- "test_bait"
+
+
+
+REF <- fread("Rice_Annotation/IRGSP-1.0_representative_annotation_2022-09-01.tsv",sep = "\t", header = T)
+
+ref <- ref[which(ref$Feature %in% REF$Transcript_ID),]
+ref <- merge(ref,REF[,c("Transcript_ID","Description")], by.x = "Feature", by.y = "Transcript_ID")
+
+X <- X[,which(colnames(X) %in% ref$Feature)]
+ref <- ref[match(colnames(X),ref$Feature),]
+
+SL_ref <- ref[grep("trigolact",ref$Description),]
+
+SL_ref <- ref[grep("trigolact",ref$Description),]
+SL_ref <- SL_ref[-which(SL_ref$Feature %in% c("Os01t0701400-01","Os03t0203200-01","Os01t0763200-01","Os04t0668900-01","Os06t0154200-01","Os11t0104300-01","Os08t0250900-01")),]
+
+
+PSI_ref <-read.table("Rice_Annotation/PSI_genes.txt", sep = "\t", header = T)
+
+# baits <- SL_ref$feature
+
+ref$Baits[-which(ref$Baits %in% c(baits,baits2,SL_ref$Baits))] <- "non_pathway"
+ref$Baits[which(ref$Baits %in% baits)] <- "bait"
+
+ref$Baits[which(ref$Baits %in% c(SL_ref$Baits[-which(SL_ref$Baits %in% baits)],baits2))] <- "bait"
+
+
+
+ref$Baits[which(ref$Baits != "bait")] <- "Other"
+ref$Baits[which(ref$Baits == "bait")] <- "Pathway"
+
+```
+
+```{r}
+meta <- meta[order(meta$time),]
+meta <- meta[order(meta$gc),]
+```
+
+
+```{r}
+X <- X[match(meta$ID, rownames(X)),]
+
+
+```
+
+
+
+```{r, echo = FALSE, include = F}
+m <- meta
+m[,c("growth_condition","time")] <- lapply(m[,c("growth_condition","time")],factor)
+
+
+res_ASCAplus_nb <- ASCA_decompose(d = m[,c("growth_condition","time")], x = X,
+                               f = "growth_condition + time + growth_condition:time")
+```
+
+
+```{r, echo = FALSE}
+
+ minT <-  res_ASCAplus_nb$decomposition$growth_condition + res_ASCAplus_nb$decomposition$`growth_condition:time`
+  PCD <- prcomp(minT)
+  
+  newdata <- res_ASCAplus_nb$decomposition$growth_condition + res_ASCAplus_nb$decomposition$`growth_condition:time` + res_ASCAplus_nb$residuals
+  
+
+  PCDE <- predict(PCD, newdata)
+  
+      F_norms <- c(do.call(c,lapply(res_ASCAplus_nb$decomposition,norm, type = "F")), 
+                 residual = norm(res_ASCAplus_nb$residuals, type = "F"))
+
+
+```  
+
+
+```{r, echo = F, include = FALSE}
+a_c.PCD <- PCD
+SL <- SL_plot(a_c.PCD, meta)
+```
+
+
+
+```{r, echo = F, inlcude = F}
+
+#, fig.cap="Top: distribution and mean sd relationship. Bottom: scores and loadings of the combined effect; growth condition + interaction"
+
+ve1 <- paste0(round(summary(a_c.PCD)$importance[2,1:2] * 100, digits = 2), "%")
+
+loadingplot <- function(df, meta, baits, ve, ref, ...){
+  #df is PCD$rotation
+
+  #rematch REF, ref, df
+  df <- as.data.frame(df)
+  df <- cbind.data.frame(ref,df)
+
+  ggplot(df, ...) +
+
+    xlab(paste0("PC1 ",ve[1])) +
+    ylab(paste0("PC2 ",ve[2])) +
+
+    geom_point(data = df[which(df$Baits == "Other"),], alpha = 0.1) +
+    geom_point(data = df[which(df$Baits == "Pathway"),], alpha = 1) +
+    scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
+    guides(shape = guide_legend(override.aes = list(size = 0.5))) +
+    ggtitle("Loadings") +
+    theme_bw()+
+        scale_colour_discrete(name=NULL)
+
+}
+
+
+
+l <- loadingplot(a_c.PCD$rotation, meta, c(baits,baits2), ve = ve1, ref = ref, aes(x = PC1,y = PC2, colour = Baits, label = Description))
+
+meta2 <- meta
+colnames(meta2)[11] <- "g_c"
+
+scoreplot <- function(df, meta, ve, ...){
+  
+  #df <- as.data.frame(df)
+  df <- cbind.data.frame(meta,df)
+  df$time <- factor(df$time, levels = c(1:4))
+  df$g_c <- factor(df$g_c)
+  
+  
+  ggplot(df, ...)+
+    geom_point() +
+    xlab(paste0("PC1 ",ve[1])) +
+    ylab(paste0("PC2 ",ve[2])) + 
+    theme_bw()
+  
+}
+s <- scoreplot(PCDE, meta2, ve1, aes(x= PC1, y = PC2, colour = g_c, shape = time)) + ggtitle("Scores")
+
+#+ guide_area()# + plot_layout(design = design)
+qq <- qqplot(newdata, meta, aes(x=X_2000, y= X_1999, colour = growth_condition, shape = time))
+
+
+ASCA_cands <- get_ASCA_cands(a_c.PCD)
+colnames(ASCA_cands) <- c("VIP", "PC1","PC2")
+#kable(head(ASCA_cands,10))
+
+CAND_TAB <- round(ASCA_cands[1:10,], 4)
+CAND_TAB <- cbind.data.frame(rownames(CAND_TAB), CAND_TAB)
+colnames(CAND_TAB)[1] <- "Feature"
+
+
+fill <- rep(c("grey95", "grey90"), nrow(CAND_TAB))
+fill[which(CAND_TAB$Feature %in% baits)] <- "yellow"
+
+theme1 <- ttheme_default(core = list(
+  fg_params = list(fontface=c(rep("plain", nrow(CAND_TAB)))),
+  bg_params = list(fill = fill)),
+  base_size = 5, padding = unit(c(2, 2), "mm"))
+
+candtab <- gridExtra::tableGrob(CAND_TAB, rows = NULL, theme = theme1)
+
+# (dist_norm + plot_normal)/(s + l)
+
+```
+
+
+
+
+
+```{r, include = F}
+source("DATA_SIM_FUNCS.R")
+
+pcd <- prcomp(res_ASCAplus_nb$residuals)
+residual_cands <- get_ASCA_cands(pcd)
+
+#HERE
+```
+
+```{r}
+# image(cor(res_ASCAplus_nb$residuals[,c(baits,baits2)]))
+```
+
+```{r, inlcude = FALSE}
+
+minT <-  res_ASCAplus_nb$decomposition$time
+tcd <- prcomp(minT)
+
+newdata <- res_ASCAplus_nb$decomposition$time + res_ASCAplus_nb$residuals
+PCDE <- predict(PCD, newdata)
+
+tcd <- prcomp(res_ASCAplus_nb$decomposition$time + res_ASCAplus_nb$residuals)
+
+
+
+
+```
+
+
+```{r, include = F}
+#do permutation tests to see if the correlations in the "non experimentally interesting" data are significant between the strigolactone genes compared to random sets.
+
+pathway <- ref[which(ref$Baits == "Pathway"),1]
+
+p_n_b <- pathway[-which(pathway %in% baits)]
+
+psi_ref <- PSI_ref[which(PSI_ref[,1] %in% colnames(res_ASCAplus_nb$residuals)),]
+
+image(cor(res_ASCAplus_nb$residuals[,c(pathway,psi_ref[,1])]))
+```
+
+```{r}
+get_ASCA_cands2 <- function(PCD, meta, distance_calc= FALSE, baits = NULL, spikes = NULL, ret_candN = nrow(PCD$rotation)){
+  #############
+  
+  if(distance_calc== TRUE){
+    
+    cands <- ranked_dist(baits,PCD)
+    
+  }else{
+    absload <- abs(data.matrix(PCD$rotation[,1:2])) %*% diag(summary(PCD)$importance[2,1:2])
+    combscore <- rowSums(absload[,1:2])
+    
+    
+    orderedload <- cbind(combscore, PCD$rotation[,1:2])
+    cands <- as.data.frame(orderedload[order(orderedload[,1], decreasing = T),])
+    colnames(cands) <- c("VIP", "PC1","PC2")
+    
+    cands <- round(cands[1:ret_candN,], 4)
+    
+    
+  }
+  
+  return(cands)
+  
+  
+}
+
+
+ASCA_cands2 <- get_ASCA_cands2(a_c.PCD)
+ASCA_cands2 <- ASCA_cands2[which(ASCA_cands2[,2] < 0),]
+ASCA_cands2 <- ASCA_cands2[order(ASCA_cands2[,2]),]
+```
+
+In the real data from @haiderTranscriptomeAnalysisPhosphate2023 some plants were subjected to massive stress with the phosphate limitation. This is therefore reflected by large differences in the transcriptome compared to those with a normal supply of P. This limitation affected many more genes than those directly involved in SL biosynthesis. Furthermore, there appears to be a stronger experiment independent relationship amongst the SL genes compared to their correlations with other DE genes, as displayed in Figure \@ref(fig:residualdists) where the blue distribution indicates the 9 transcripts from figures \@ref(fig:Dataset1-Overview) and \@ref(fig:ASCA-1) and the red is the relationship between these 9 and other top differential genes.
+
+```{r residualdists, fig.cap=c("Distributions of Fisher transformed Pearson correlations in residuals from the ASCA model. Blue indicates correlations between SL pathway genes, red indicates correlations between SL pathway genes and top 10% (non-SL) DE genes; upregulated in P-")}
+
+
+cor_val <- function(x){
+
+  # y <- y[which(y %in% colnames(x))]
+
+  cor_res <- cor(x[])
+
+  cor_res <- 0.5*log((1+cor_res)/(1-cor_res))
+
+  # res <- (sum(cor_res))   /length(y)^2
+
+  # res <- mean(cor_res[upper.tri(cor_res)])
+
+  return(cor_res)
+
+}
+
+# plot(ASCA_cands2[1:1253,2], ASCA_cands2[1:1253,3])
+
+
+test <- cor_val(res_ASCAplus_nb$residuals[,pathway])  #res_ASCAplus_nb$residuals
+# hist(test[upper.tri(test)])
+
+
+#define top DE ID vector, with no SL genes
+ASCA_cands2 <- ASCA_cands2[-which(rownames(ASCA_cands2) %in% pathway),]
+non_pathway <- rownames(ASCA_cands2)[1:1253]
+
+test2 <- cor_val(res_ASCAplus_nb$residuals[,c(pathway,non_pathway)])
+test2[upper.tri(test2, diag = T)] <- NA
+
+mt <- melt(test2, na.rm = T)
+mt$group <- as.character(mt$Var1)
+
+mt$group[which(mt$Var1 %in% pathway & mt$Var2 %in% pathway)] <- "SL-SL"
+
+
+mt$group[which(mt$Var1 %in% non_pathway & mt$Var2 %in% pathway)] <- "SL-Other"
+
+mt <- mt[which(mt$group %in% c("SL-SL","SL-Other")),]
+colnames(mt)[3] <- "Correlation"
+dens <- ggplot(mt, aes(Correlation, colour = group)) + geom_density() + theme_bw()
+dens
+```
+
+
+
+
+```{r extra plot making}
+# ASCA_cands3 <- ASCA_cands2[-which(rownames(ASCA_cands2) %in% c("Os06t0570600-00","Os06t0570566-00", "Os09t0321200-00","Os06t0651900-01", "Os10t0444566-00")),]
+# h <- readRDS("heat_comp.RDS")
+# levels(h[[2]]$time) <- c("1","3","7","8")
+# 
+# # make row annotation
+# 
+# row_ann <- data.frame("Feature" = rep(c("SL","Other DE"),each = 9))
+# rownames(row_ann) <- c(pathway,rownames(ASCA_cands3)[1:9])
+# 
+# ann_colours <- list(g_c = c("P-" = "#F8766D","P+" = "lightblue"),
+#                     time = c("1" = "#fde725","3" = "#35b779","7" = "#31688e","8" = "#440154"),
+#                     Feature = c("SL" = "purple", "Other DE" = "lightgreen"))
+# 
+# h[[1]] <- t(X[,c(pathway,rownames(ASCA_cands3)[1:9])])  #psi_ref[,1]
+# 
+# heat <- pheatmap::pheatmap(t(scale(t(h[[1]]))),  #
+#                              cluster_rows = F,
+#                              cluster_cols = F,
+#                              show_rownames = T,
+#                              show_colnames = F,
+#                              annotation_col = h[[2]],
+#                            annotation_row = row_ann,
+#                            annotation_colors = ann_colours,
+#                            treeheight_row = 10,
+#                            fontsize = 8,
+#                              # annotation_row = anno,
+#                              main = "Scaled Gene Expression",silent = T)
+# 
+#   # heat
+#   library(ggplotify)
+#   heat2 <- as.ggplot(heat) + theme(plot.title = element_text(face = "plain"))
+#
+#   saveRDS(heat2, "heatmap_MASCARA_Fig_2.RDS")
+
+  
+# 
+# qqplot <- function(data, meta, ...){
+# 
+#   df <- cbind.data.frame(meta,data)
+# 
+#   df$time <- factor(df$time, levels = unique(meta$time))
+#   df$growth_condition <- factor(df$growth_condition)
+# 
+# 
+#   ggplot(df, ...) +
+#     geom_point() +
+#     theme_bw()
+# 
+# 
+# }
+# 
+# meta$time <- rep(c(1,3,7,8), each = 3, 2)
+# 
+# cand_b <- PSI_cands[10]
+# cand_w <- baits[3]
+# 
+# cor_tw <- round(cor(X[,which(colnames(X) %in% cand_w)], X[,which(colnames(X) %in% baits[4])]), digits = 2)
+# 
+# cor_tb <- round(cor(X[,which(colnames(X) %in% cand_b)], X[,which(colnames(X) %in% baits[4])]), digits = 2)
+# 
+# cor_rw <- round(cor(res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_w)], res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]), digits = 2)
+# 
+# cor_rb <- round(cor(res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_b)], res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]), digits = 2)
+# 
+# 
+# within <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% cand_w)],
+#                         "Bait" = X[,which(colnames(X) %in% baits[4])]),meta,
+#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_w) + labs(title = paste0("r = ",cor_tw))
+# 
+# PSI_cands <- rownames(ASCA_cands[which(rownames(ASCA_cands) %in% psi_ref[,1]),])
+# PSI_cands <- head(rownames(ASCA_cands[-which(rownames(ASCA_cands) %in% pathway),]),20)
+# 
+# 
+# between <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% cand_b)],
+#                         "Bait" = X[,which(colnames(X) %in% baits[4])]),meta,
+#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_b) + labs(title = paste0("r = ",cor_tb))
+# 
+# # within + between + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A')) + plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
+# 
+# 
+# 
+# 
+# within_r <- qqplot(cbind.data.frame("Candidate" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_w)],
+#                         "Bait" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]),meta,
+#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_w)   + labs(title = paste0("r = ",cor_rw))#, alpha = (16- as.numeric(growth_condition))
+# 
+# 
+# between_r <- qqplot(cbind.data.frame("Candidate" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_b)],
+#                         "Bait" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]),meta,
+#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_b)  + labs(title = paste0("r = ",cor_rb))
+# 
+# (within + between)/(within_r + between_r) + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1')) #+ plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
+
+
+
+#^^ C:/Users/fwhite/Documents/within_between_example_2.png
+```
+
+```{r}
+# ggp_rand_cor <- as.data.frame(rand_cor)
+# colnames(ggp_rand_cor)[1] <- "Cor"
+# dist <- ggplot(ggp_rand_cor) + geom_density(aes(x = Cor))
+# 
+
+```
+
+
+```{r}
+
+all <- cbind.data.frame(meta[,c("growth_condition","time")], X)
+residuals <- cbind.data.frame(meta[,c("growth_condition","time")], res_ASCAplus_nb$residuals)
+```
+
+
+```{r}
+#get cands from residuals
+
+rPCD <- prcomp(data.matrix(residuals[,-c(1:2)]))
+
+
+# residual_cands_all <- ranked_dist(pathway, rPCD)
+# residual_cands_phos <- ranked_dist(PSI_ref[,1], rPCD)
+
+
+
+```
+
+
+
+
+```{r}
+#filter residuals for only n genes that show treatment effect i.e. set VIP cutoff value
+#how to do this with density?...
+
+
+#first quick and dirty attempt with top n candidates  -  then add density 
+
+cutoff <- round(quantile(c(1:nrow(ASCA_cands)),0.1))
+res_filt <- residuals[,c(1:2,which(colnames(residuals) %in% rownames(ASCA_cands)[1:cutoff]))]
+
+rpcd <- prcomp(data.matrix(res_filt[,-c(1:2)]))
+
+ref$Baits <- as.character(ref$Baits)
+ref$Baits[which(ref$Feature %in% PSI_ref[,1])] <- "PSI"
+ref$Baits <- factor(ref$Baits, levels = c("Other","Pathway","PSI"))
+
+Fref <- ref[match(rownames(rpcd$rotation),ref$Feature),]
+
+```
+
+
+
+
+
+
+```{r, include = F}
+importance <- paste0(round(summary(rpcd)$importance[2,] * 100, digits = 2), "%")
+```
+
+
+
+```{r}
+# resids <- residuals[,-c(1:2)]
+resids <- res_filt[,-c(1:2)]
+spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], resids[,which(colnames(resids) %in% baits)], all.outputs = T)
+
+sPLS_cands <- cbind.data.frame(abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$X, spls_res$loadings$X * spls_res$prop_expl_var$X)
+sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = T),]
+
+importance <- paste0(round(spls_res$prop_expl_var$X * 100, digits = 2), "%")
+
+Fref2 <- Fref[-which(Fref$Feature %in% baits),]
+Fref2 <- Fref2[match(rownames(sPLS_cands),Fref2$Feature),]
+
+# sPLS_cands$Feature <- rownames(sPLS_cands)
+# sPLS_cands <- merge(sPLS_cands, ref, by = "Feature")
+
+# ggplotly(loadingplot(sPLS_cands, meta, baits = Fref2$Feature[which(Fref2$Baits %in% c("Pathway","PSI"))], 
+            # importance, PCs = c(1,2), ref = Fref2, aes(x = comp1, y = comp2, colour = Baits, label = Description)))
+
+
+```
+
+
+
+```{r}
+#calculating direction of baits to determine direction of candidate selection spls loading space
+
+# loadingplot(sPLS_cands, meta, baits = Fref2$Feature[which(Fref2$Baits %in% c("Pathway","PSI"))], 
+#             importance, PCs = c(1,2), ref = Fref2, aes(x = comp1, y = comp2, colour = Baits, label = Description))
+
+angles <- rbind.data.frame(spls_res$loadings$Y, colMeans(spls_res$loadings$Y))
+
+x <- angles[4,]
+y <- angles[5,]
+
+#adapted from https://stackoverflow.com/questions/1897704/angle-between-two-vectors-in-r
+angle <- function(x,y){
+  
+  x <- c(as.matrix(x))
+  y <- c(as.matrix(y))
+  
+  dot.prod <- x%*%y 
+  norm.x <- norm(x,type="2")
+  norm.y <- norm(y,type="2")
+  theta <- acos(dot.prod / (norm.x * norm.y))
+  return(as.numeric(theta))
+}
+
+
+angles_loadings <- apply(sPLS_cands[,-1],1,angle, y = y)
+
+
+#define this better
+sPLS_cands <- cbind.data.frame(sPLS_cands, "angle" = angles_loadings, "score" = 3 * sPLS_cands$`abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$X` * (1-angles_loadings))
+
+sPLS_cands <- sPLS_cands[order(sPLS_cands$score, decreasing = T),]
+```
+
+
+```{r}
+avg_point <- angles[5,]/5
+
+rot.mat <- matrix(c(0,-1,1,0),nrow = 2, byrow = T)  #90 degree clockwise rotation
+
+rotated_point <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat)
+
+ang <- angle(avg_point,c(1,0))
+
+rot.mat2 <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation
+rotated_point2 <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat2)
+
+
+# rot.mat3 <- matrix(c(cos(ang),sin(ang),-sin(ang),cos(ang)),nrow = 2, byrow = T) #anticlockwise rotation
+# rotated_point3 <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat3)
+
+
+# ggplot() + 
+#   geom_point(data = sPLS_cands, aes(x = comp1, y = comp2), alpha = 0.1) +
+#   geom_point(data = sPLS_cands[1:100,], aes(x = comp1, y = comp2)) +
+#   geom_segment(data = avg_point, aes(x = 0, y = 0, xend = comp1/10, yend = comp2/10)) +
+#   # geom_segment(data = rotated_point, aes(x = 0, y = 0, xend = V1, yend = V2)) +
+#   geom_segment(data = rotated_point2, aes(x = 0, y = 0, xend = V1/10, yend = V2/10)) +
+#   # geom_segment(data = rotated_point3, aes(x = 0, y = 0, xend = V1, yend = V2)) +
+# 
+#   # xlim(c(-0.1,0.1))+
+#   # ylim(c(-0.1,0.1)) +
+# 
+#   theme_bw()
+#   # geom_smooth(method = "lm")
+
+```
+
+```{r}
+#rotated loadings
+ang <- angle(avg_point,c(1,0))
+
+rot.mat2 <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation
+
+rotated_point2 <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat2)
+
+rotate <- function(x,y){
+  x <- c(as.matrix(x))
+  x %*% y
+}
+
+loadings_r_baits <- t(apply(sPLS_cands[,c("comp1","comp2")],1,rotate, y = rot.mat2))
+colnames(loadings_r_baits) <- c("comp1","comp2")
+```
+
+
+```{r}
+sPLS_bait_cands <- loadings_r_baits[order(loadings_r_baits[,1], decreasing = T),]
+
+
+```
+
+
+
+```{r}
+#U+03C0
+#"\u03c0 / 4" #pi over 4
+
+# rotate <- function(x,y){
+#   x <- c(as.matrix(x))
+#   x %*% y
+# }
+
+#loop over rotation matrices from -pi/4 -> pi/4
+#resolution of 100 (?)
+
+range.ang <- seq(from = -pi/6, to = pi/6, length.out = 60)
+
+###
+
+i <- NULL
+L_R <- data.frame()
+LOADINGS_R <- list()
+
+for(i in 1:length(range.ang)){
+  
+  
+ang <- range.ang[i]
+
+rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation
+loadings_r <- t(apply(loadings_r_baits[,c("comp1","comp2")],1,rotate, y = rot.mat))
+colnames(loadings_r) <- c("comp1","comp2")
+L_R <- rbind(L_R,loadings_r)
+  LOADINGS_R[[i]] <- loadings_r
+
+  
+}
+
+# colnames(LOADINGS_R) <- c("comp1","comp2")
+L_R$rad <- rep(range.ang, each = nrow(sPLS_cands))
+L_R$frame <- rep(c(1:length(range.ang)), each = nrow(sPLS_cands))
+
+
+```
+
+
+```{r}
+#get sd of original comp1 distribution
+sigma <- sd(sPLS_cands$comp1)
+
+big.T.sig <- function(x,y){
+  big <- length(which(x > 2.5*y))
+  return(big)
+}
+
+i <- NULL
+res <- c()
+for(i in 1:length(LOADINGS_R)){
+  
+  r <- big.T.sig(LOADINGS_R[[i]][,1],sigma)
+  res <- c(res,r)
+}
+
+```
+
+
+
+```{r}
+RES <- cbind.data.frame("Rad" = range.ang, "Density" = res)
+
+density <- ggplot(RES, aes(x = Rad, y = Density))+
+  geom_smooth() + theme_bw() + ggtitle("Number of points above 2*sigma of original rotation")
+
+# density
+
+```
+
+
+
+```{r}
+
+#taken from https://stackoverflow.com/questions/6836409/finding-local-maxima-and-minima
+inflect <- function(x, threshold = 1){
+  up   <- sapply(1:threshold, function(n) c(x[-(seq(n))], rep(NA, n)))
+  down <-  sapply(-1:-threshold, function(n) c(rep(NA,abs(n)), x[-seq(length(x), length(x) - abs(n) + 1)]))
+  a    <- cbind(x,up,down)
+  list(minima = which(apply(a, 1, min) == a[,1]), maxima = which(apply(a, 1, max) == a[,1]))
+}
+
+
+ggres <- ggplot_build(density)$data[[1]]
+infs <- inflect(ggres$y)
+rads <- ggres$x[infs$maxima]
+
+```
+
+
+```{r}
+maxima.ang <- rads
+
+###
+
+i <- NULL
+# L_R <- data.frame()
+sPLS_maxima_cands <- list()
+
+for(i in 1:length(maxima.ang)){
+
+
+ang <- maxima.ang[i]
+
+rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation
+loadings_r <- as.data.frame(t(apply(loadings_r_baits[,c("comp1","comp2")],1,rotate, y = rot.mat)))
+colnames(loadings_r) <- c("comp1","comp2")
+# L_R <- rbind(L_R,loadings_r)
+  sPLS_maxima_cands[[i]] <- loadings_r[order(loadings_r$comp1, decreasing = T),]
+  
+
+
+}
+```
+
+
+```{r}
+Fref2 <- Fref[-which(Fref$Feature %in% baits),]
+Fref2 <- Fref2[match(rownames(sPLS_maxima_cands[[1]]),Fref2$Feature),]
+```
+
+
+```{r}
+ 
+
+Fref2 <- Fref[-which(Fref$Feature %in% baits),]
+Fref2 <- Fref2[match(rownames(sPLS_maxima_cands[[2]]),Fref2$Feature),]
+
+
+
+
+```
+
+```{r}
+coexp_cands <- ranked_coexp(baits,X[,which(colnames(X) %in% colnames(resids))])
+
+residual_cands <- ranked_dist(baits[1:3], rpcd)
+
+residual_coexp <- ranked_coexp(baits, resids)
+
+
+```
+
+```{r}
+
+#replace this to  get cands from original bait axis plus optimised maxima
+sPLS_cands <- sPLS_maxima_cands[[2]]
+
+Methods <- c("sPLS_ASCA","PCA_DIST_ASCA","Correlations_ASCA", "Correlations")
+
+getrank <- function(RES,geneset,NOINFO = 26402){
+  # geneset <- 
+  # NOINFO = length(geneset) - length(ranks)
+  ranks <- which(rownames(RES) %in% geneset)
+  if(length(ranks) < length(geneset)){
+    ranks <- c(ranks,rep(nrow(RES) + 1, length(geneset) - length(ranks))) #NOINFO
+  }
+  
+  Ranks <- cbind.data.frame("Geneset" = geneset, "Rank" = ranks)
+  return(Ranks)
+  
+}
+
+
+psis <- PSI_ref[which(PSI_ref[,1] %in% colnames(resids)),1]
+
+
+```
+
+```{r}
+GA_ref <- read_xlsx("Rice_Annotation/GA pathway genes-IDs.xlsx")
+GA_ref$ID <- gsub("g","t",GA_ref$ID)
+GAs <- ref[which(gsub("-.*","",ref$Feature) %in% GA_ref$ID),1]
+
+GAs <- GAs[which(GAs %in% colnames(resids))]
+sPLS_ASCA <- rbind.data.frame(getrank(sPLS_cands,p_n_b),getrank(sPLS_cands,psis),getrank(sPLS_cands,GAs))
+sPLS_ASCA <- cbind.data.frame(sPLS_ASCA, "Method" = rep("sPLS_ASCA", nrow(sPLS_ASCA)))
+
+#####
+
+PCA_DIST_ASCA <- rbind.data.frame(getrank(residual_cands,p_n_b),getrank(residual_cands,psis),getrank(residual_cands,GAs))
+PCA_DIST_ASCA <- cbind.data.frame(PCA_DIST_ASCA, "Method" = rep("PCA_DIST_ASCA", nrow(PCA_DIST_ASCA)))
+
+Correlations <- rbind.data.frame(getrank(coexp_cands,p_n_b),getrank(coexp_cands,psis),getrank(coexp_cands,GAs))
+Correlations <- cbind.data.frame(Correlations, "Method" = rep("Correlations", nrow(Correlations)))
+
+Correlations_ASCA <- rbind.data.frame(getrank(residual_coexp,p_n_b),getrank(residual_coexp,psis),getrank(residual_coexp,GAs))
+Correlations_ASCA <- cbind.data.frame(Correlations_ASCA, "Method" = rep("Correlations_ASCA", nrow(Correlations_ASCA)))
+
+
+
+RES <- rbind.data.frame(sPLS_ASCA, PCA_DIST_ASCA, Correlations_ASCA, Correlations)
+
+RES$Geneset[which(RES$Geneset %in% p_n_b)] <- "SLs"
+RES$Geneset[which(RES$Geneset %in% psis)] <- "PSIs"
+RES$Geneset[which(RES$Geneset %in% GAs)] <- "GAs"
+
+RES$Method[which(RES$Method == "sPLS_ASCA")] <- "MASCARA"
+
+RES <- RES[which(RES$Method %in% c("Correlations","MASCARA")),]
+
+q <- ggplot(RES[-which(RES$Geneset == "GAs"),], aes(x = Method, y = Rank, fill = Geneset)) + geom_boxplot() + theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+
+<!-- ## Methods compared -->
+
+```{r, fig.cap="Method Ranks on Real Data"}
+
+library(rhmmer)
+REF2 <- as.data.frame(read_tblout("Rice_Annotation/HMM_ITAG_1.txt"))
+# unique(REF2$query_name[which(REF2$domain_name %in% rownames(sPLS_cands)[1:9])])
+
+# REF2[which(REF2$domain_name %in% rownames(sPLS_cands)[1:9]),c(1,3,4,19)]
+
+
+f_p_m <- REF2[which(REF2$domain_name %in% rownames(sPLS_cands)[1:25]),]
+f_p_m <- f_p_m[order(f_p_m$sequence_evalue),]
+fpm <- f_p_m[!duplicated(f_p_m$domain_name),]
+fpm <- fpm[,c(1,3,19)]
+fpm[1,3] <- "Diterpenoid phytoalexin biosynthesis"
+fpm[12,3] <- "Vesicle-Associated Membrane Protein-Associated Protein"
+cands <- rownames(sPLS_cands)[1:25]
+cands <- cands[which(cands %in% fpm$domain_name)]
+rownames(fpm) <- fpm[,1]
+fpm <- fpm[cands,]
+
+```
+
+```{r}
+rownames(fpm) <- NULL
+# kable(fpm)
+
+```
+
+
+<!-- Ranked correlations outperforms the other methods at detecting SL genes, however it also detects more general phosphate starvation induced genes (PSIs) as top candidates, due to the strong between correlations.  -->
+
+Some example top candidate genes are shown in Figure \@ref(fig:realcandidates). The between versus within problem is again exemplified here. With several of the top candidates detected by correlations (ASCA and PLS, results not shown) showing no indication of within group correlations. Candidates selected with MASCARA, on the other hand, consistently show within group correlations with the baits. Furthermore, the strigolactone pathway, which is still under active investigation, has several uncharacterised biosynthetic steps. These are thought to be carried out by cytochrome p450s. The top candidates from MASCARA contain at least three (putative) cytochrome p450 genes that have not yet been biologically investigated in SL biosynthesis, as well as, a methyltransferase and several putative carotenoid associated genes. MASCARA also detected genes linked to Gibberellins (GA) preferentially to general phosphate starvation genes. The GA pathway has been linked to the strigolactones (@itoRegulationStrigolactoneBiosynthesis2017, @marzecStrigolactonesGibberellinsNew2017). The interaction between these two pathways has been characterised recently under nitrogen limitation by @sunStrigolactoneGibberellinSignaling2023.
+
+
+
+
+```{r realcandidates, fig.cap="Selected candidates from A-C ranked correlations and D-F MASCARA. X axes; expression level of one of the bait genes (CCD8), y axes; expression levels of three example coexpression candidates for each method."}
+# x2 <- X
+# 
+# X <- res_ASCAplus_nb$residuals
+
+
+
+qqplots_spls <- list()
+qqplots_coexp <- list()
+qqplots_pca <- list()
+qqplots_resid_cor <- list()
+
+qqplots_spls_SR <- list()
+
+
+i <- NULL
+for(i in 1:9){
+  qqplots_spls[[i]] <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% rownames(sPLS_cands)[i])],
+                        "Bait" = X[,which(colnames(X) %in% baits[1])]),meta, 
+       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + ylab(rownames(sPLS_cands)[i])
+  
+  qqplots_coexp[[i]] <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% rownames(coexp_cands)[i])],
+                        "Bait" = X[,which(colnames(X) %in% baits[1])]),meta, 
+       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + ylab(rownames(coexp_cands)[i])
+  
+  # qqplots_pca[[i]] <- qqplot(cbind.data.frame("Bait" = X[,which(colnames(X) %in% rownames(residual_cands)[i])],
+  #                       "Candidate" = X[,which(colnames(X) %in% baits[1])]),meta, 
+  #      aes(x = Bait, y = Candidate, colour = growth_condition, shape = time))
+  # 
+  qqplots_resid_cor[[i]] <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% rownames(residual_coexp)[i])],
+                        "Bait" = X[,which(colnames(X) %in% baits[1])]),meta, 
+       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + ylab(rownames(residual_coexp)[i])
+  
+    # qqplots_spls_SR[[i]] <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% rownames(SR)[i])],
+    #                     "Bait" = X[,which(colnames(X) %in% baits[1])]),meta, 
+    #    aes(x = Bait, y = Candidate, colour = growth_condition, shape = time))
+    # 
+
+  
+}
+
+plot1 <- wrap_plots(qqplots_coexp[c(5,7,8)]) + plot_annotation(title = "Correlations")
+plot2 <- wrap_plots(qqplots_spls[c(1,5,8)]) + plot_annotation(title = "MASCARA")
+
+# plot1/plot2 + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1'))
+
+a <- knitr::include_graphics("within_between_example.png")
+a
+
+```
+
+
+
+
+
+
+# Discussion and conclusions
+
+In this article we introduced multivariate ASCA residual analysis (MASCARA) as a method for coexpression analysis in data containing a dominant variance structure from a known (experimental) source. MASCARA estimates effects through the GLM with a design matrix to remove the variance between conditions, then the residual matrix can be decomposed through PLS2, with feature ranking through target projections. This framework enables the investigation of multivariate relationships between a set of baits and the rest of the data. MASCARA thrives on the fact that within the typical experimental setup small systematic variance exists between replicates due to variations in ambient factors that affect plant growth, and therefore the variance structures in the resulting data. 
+
+Through simulation studies we showed the conditions under which MASCARA is suitable for coexpression analysis and compared it to a selection of other coexpression methods (ASCA+, PLS2 and correlations). These methods were applied to data from @haiderTranscriptomeAnalysisPhosphate2023 exploring the strigolactone pathway and simulated data based on the structure of the Haider data. In a coexpression context, within certain assumed parameters of variance structure (dominant between-group, existing within-group), MASCARA outperformed competitors. Ranked correlations, ASCA (@smildeANOVAsimultaneousComponentAnalysis2005, @thielASCAAPCAExtensions2017) and PLS (@woldCollinearityProblemLinear1984) are all affected by dominant between-group variance, which is a common occurrence in experimental data, exemplified here by the dataset from @haiderTranscriptomeAnalysisPhosphate2023 but discussed elsewhere (@farahbodUntanglingEffectsCellular2020, @zhaoWeightedGeneCoexpression2010, @chowdhuryDifferentialCoExpressionAnalysis2020). 
+
+The feature selection stage of MASCARA uses an average vector constructed from the loadings of the baits onto which to project the loadings of other genes, which is similar to target projection in @kvalheimInterpretationPartialLeast2010 although we construct the target vector from averaging the loadings in a PLS2 model as opposed to already having it defined with the univariate response in PLS1. There are many established methods for feature selection in PLS which include Variable Importance in Projection (VIP) and Selectivity Ratio (@rajalahtiBiomarkerDiscoveryMass2009), however these methods focus on the importance of variables in the construction of the model rather than a directional association with the response block. With the averaged target projection approach we can use the information in a set of baits to define a direction in the latent space which can then be used as an axis to determine the relatedness of other genes. This assumes moderate to high correlation in the residuals of the baits, which is a realistic assumption in coexpression analysis although should be verified in the selection of baits.
+
+Our analysis framework does not consider different correlation structures within the residual variance, this could be an issue especially in the cases similar to @caldanaHighdensityKineticAnalysis2011 where different combinations of experimental factors show differential within-group correlation structure. With MASCARA these could be missed, ideally there would be enough samples to calculate robust correlations per group, to account for possible rewiring under different conditions, but in our case we focus on experiments where there are generally not enough replicates to do this. Experiments with higher replication number are always desirable from the point of view of data analysis. However, this is not always feasible due to time and space constraints. We tested the effects of replication number and found that MASCARA can outperform its competitors with lower replication, especially in data containing many differential genes between experimental conditions. This advantage holds as long as there is a realistic amount of structured variance caused by undocumented ambient factors. 
+
+
+In coexpression analysis, there is no need for class balance, it is in fact better to have more data points in the class where the pathway is induced (P- in the example dataset). When the mechanism of interest is only active in the case condition then the control samples are mostly redundant. With more samples in the condition of interest the reliability of the coexpression analysis will improve. The MASCARA approach indicates that the typical experimental design used for DE is not optimal for coexpression studies. The fact that the residuals need to be isolated to find within group variance confirms the notion that coexpression analysis warrants different experiments than those used for DE studies. If quantification of differential expression is also needed, for example to confirm the pathway under study is affected by the treatment, but the main focus of research is coexpression, then it is an option to have just a few samples in a control condition to confirm the experimental treatment has caused the desired effect. This was not tested explicitly here, however if pathway genes are not active in a given condition then this set of samples does not provide any useful coexpression information.
+
+This work has outlined and tested a basic use of MASCARA where the relationship between baits and unknown pathway genes is predefined to be positive. The method is not limited to the calculation of positive associations, however performance in detecting negative correlations (indicative of inhibitory or negative feedback processes) or more complex relationships has not been tested within the current simulations. Our approach was based off the structure of the Haider RNAseq dataset, however the method is applicable across other omics types. This holds under the assumption that the set of baits have a multivariate relationship between themselves and multiple other (unknown) genes. These genes are also related to the baits, as in our partially characterised strigolactone pathway example. In untargeted metabolomics datasets these assumptions are also likely to be met.
+
+Taken together our results indicate that the lack of ability to discern different types of variance in a dataset can compromise the detection of true coexpression patterns. MASCARA accounts for the different types of (experimental and ambient) variance and enables finer scale detection of within group variance structure. 
+
+
+<!-- Future research on this topic would involve further development of the data simulator.  -->
+
+
+# Acknowledgements
+
+FW would like to thank Frans van der Kloet, Fentaw Abegaz, Roel van der Ploeg for statistical discussions and Imran Haider for consultation on the strigolactone pathway. FW thanks the Data Science Centre of the University of Amsterdam for partial financial support.
+
+
+# References
+
+<div id="refs"></div>
+
+
+# Supplementary
+
+Target projection in PLS2 models has not been described in the literature, we therefore tested our approach against the most common methods for feature selection in PLS namely variable importance in projection (VIP) and selectivity ratio (SR). Here we have similar but reduced simulation set up to the replicate test section; 3 levels of unstructured noise; matrix F-norm sizes (as indicated in the panels). In each of the 3 tests the $\mathbf{T}_S$ is randomised 30 times resulting in different correlation structures between baits and spikes. Target projection using $\mathbf{\bar{q}}$ significantly outperforms the conventional approaches.
+
+
+```{r}
+
+#30 random initial scores, similar noise 
+#parameters, 3-30 replicates per condition. 
+Rep_Tests <- readRDS("Noise_Sim_23_07_30_FS_Tests.RDS")  #_3  Noise_Sim_23_06_23_Replicate_Tests.RDS
+names(Rep_Tests) <- c("TP","SR","VIP","SVD1")
+
+RES <- cbind.data.frame(t(Rep_Tests[[1]][1,]), t(Rep_Tests[[2]][1,]), t(Rep_Tests[[3]][1,]), t(Rep_Tests[[4]][1,]))
+
+RES <- cbind.data.frame("E" = c(rep(c(5,10,15), each = 30)), RES)
+colnames(RES) <- c("E", names(Rep_Tests))
+
+
+
+mRES <- pivot_longer(RES,c("TP","SR","VIP","SVD1"))
+colnames(mRES) <- c("E","Method","RP")
+
+mRES <- mRES[-which(mRES$Method == "SVD1"),]
+
+ggplot(mRES, aes(x = Method, y = RP)) +
+  geom_boxplot() +
+  facet_grid( ~E)
+
+```
+
+
+<!-- MASCARA example run on $params: -->
+
+
+```{r}
+
+
+
+```
+
+
+
+
+
+
+<!-- Data was simulated: -->
+
+<!-- \begin{equation} -->
+<!-- \begin{aligned} -->
+<!-- \bm{Y} &= \bm{1\mu}^T + \bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T + \bm{Y}_{\beta} + \bm{E} \\ -->
+<!-- \text{where:} &\\ -->
+<!-- \bm{T}_{\alpha + \alpha\beta} &= \text{vec}(\bm{ab}^T) \quad \text{where:} \\ -->
+<!-- \bm{c}_{i,1:4} &\sim \mathcal{N}(0,1), \quad \bm{a}_{1:r} = [1,\ldots,1], \quad \bm{b}_{1:8} = [\bm{c}_{i},-\bm{c}_{i}]^T \\ -->
+<!-- \bm{T}_{\beta} &= \text{vec}(\bm{de}^T) \quad \text{where:} \\ -->
+<!-- \bm{f}_{1:4} &\sim \mathcal{N}(0,1.5), \quad \bm{d}_{1:r} = [1,\ldots,1], \quad \bm{e}_{1:8} = [\bm{f},\bm{f}]^T \\ -->
+<!-- \bm{P}_{\alpha + \alpha\beta}^{1:2} &= \begin{bmatrix}1.5_{1:4} & 1_{5:8} & 0.5_{9:12} & 0_{13:2000}\end{bmatrix} \\ -->
+<!-- \bm{P}_{\beta}^{1:2} &= \begin{bmatrix}0.1_{1:1000} & 0_{1001:2000}\end{bmatrix} \\ -->
+<!-- \bm{E} &\sim \mathcal{N}(0,0.75) -->
+<!-- \end{aligned}(\#eq:suppl-Sim-bp) -->
+<!-- \end{equation} -->
+
+
+<!-- genes 1:12 have non-zero loadings on PC1 of $svd({\bm{Y}_{\alpha + \alpha\beta}})$, these are considered genes of interest. These 12 genes correspond to the baits and spikes (spikes represent "unknown" genes of interest, used for method evaluation). Which of these genes are baits and which are spikes depends on the methods being tested and will be discussed in the Analysis and Feature Selection section. genes 501:510 have a value of 0.5 on PC2 of $svd({\bm{Y}_{\alpha + \alpha\beta}})$ and are considered to display a nonsense effect. -->
+
+<!-- genes 1:1000 have a loadings of 0.1 on PC1 of $svd({\bm{Y}_\beta})$ and genes 1001:2000 have loadings of 0.1 on PC2 of $svd({\bm{Y}_\beta})$. To create $\bm{Y}$ the dot product of the scores and transposed loadings is calculated per factor, and added to a general mean value for each feature ($\bm{1\mu}^T$) as well as some normally distributed noise \(\bm{E}\) to create differences between the replicates, see equation \@ref(eq:Sim-bp) for an overview. -->
+
+<!-- <!-- \End{multicols} --> 
+
+
+<!-- sim2:  -->
+<!-- For this simulation we create 2 components in the combined effect (${\bm{Y}_{\alpha + \alpha\beta}}$), 2 for time ($\bm{Y}_\beta$). For the time effect, we create this similarly to simulation 1. For the combined effect: 2 random orthogonal scores. The loadings for these components contain several sets of genes, some with positive and some with negative loadings onto the 4 components.  -->
+
+
+<!-- Y = TP (ambient structure) This is regressed onto the concatenated scores of the combined effect and time to ensure orthogonality, creating relationships that are independent of the experimentally induced variance. -->

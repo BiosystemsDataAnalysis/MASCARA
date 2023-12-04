@@ -1,0 +1,530 @@
+---
+title: "network_plot_work"
+author: "Fred White"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggrepel)
+library(readxl)
+library(extrafont)
+library(cowplot)
+library(graphlayouts)
+library(gganimate)
+library(animation)
+```
+
+```{r}
+# font_import() # download once 
+#windowsFonts() # to check which are loaded
+```
+
+```{r}
+loadfonts(device = "win", quiet = TRUE)
+
+###partial correlations
+
+library(ppcor)
+#library(matlib)
+library(psych)
+
+#
+# plot residuals and full 
+
+baits <- c(baits,spikes[1:5])
+spikes <- spikes[-c(1:5)]
+
+residuals <- ar[[3]]
+data <- sim_data[[1]]
+
+
+cand_vals <- residuals[,1970:2000]    #rgs[which(rownames(rgs) %in% names(g_b)[1:50]),]
+
+# cand_vals <- data[,1970:2000]
+
+##CHANGE THIS 
+#make p3 interconnections stronger, 
+#make p3 connect weakly to p2 through one or two nodes, 
+#sparsify p2 and p3 connections 
+
+
+adj <- cor(cand_vals)
+
+rownames(adj) <- colnames(cand_vals)
+colnames(adj) <- colnames(cand_vals)
+
+
+```
+
+```{r}
+set.seed(12)
+pways <- sum(length(baits),length(spikes))
+W <- matrix(sample(c(0,0,0,0,1),pways*pways, replace = T), nrow = pways)
+
+adj[which(rownames(adj) %in% c(baits,spikes)),which(colnames(adj) %in% c(baits,spikes))] <- adj[which(rownames(adj) %in% c(baits,spikes)),which(colnames(adj) %in% c(baits,spikes))] * W
+
+
+#adj[which(rownames(adj) %in% baits),which(colnames(adj) %in% spikes)] <- adj[which(rownames(adj) %in% baits),which(colnames(adj) %in% c(spikes))] * W
+```
+
+
+```{r}
+set.seed(345)
+W <- matrix(sample(c(1,0,0,0,0),15*15, replace = T), nrow = 15)
+adj[-which(rownames(adj) %in% c(baits,spikes)),-which(colnames(adj) %in% c(baits,spikes))]  <- 0.9
+
+adj[-which(rownames(adj) %in% c(baits,spikes)),-which(colnames(adj) %in% c(baits,spikes))] <- adj[-which(rownames(adj) %in% c(baits,spikes)),-which(colnames(adj) %in% c(baits,spikes))] * W
+
+```
+
+```{r}
+#sparsify p1 p2 connections 
+
+set.seed(22)
+
+
+W <- matrix(sample(c(1,0,0,0,0),length(baits) * length(spikes), replace = T), nrow = length(spikes))
+
+
+adj[which(rownames(adj) %in% spikes),which(colnames(adj) %in% baits)] <- adj[which(rownames(adj) %in% spikes),which(colnames(adj) %in% baits)] * W
+
+
+```
+
+
+```{r}
+
+##need to know which nodes are in at least one of the conditions before here 
+
+
+library(igraph)
+
+g <- graph.adjacency(
+  as.matrix(as.dist(adj)),
+  mode="undirected",
+  weighted=TRUE,
+  diag=FALSE
+)
+
+g <- simplify(g, remove.multiple=TRUE, remove.loops=FALSE)
+
+# Colour negative correlation edges as blue
+E(g)[which(E(g)$weight<0)]$association <- "-ve"
+# Colour positive correlation edges as red
+E(g)[which(E(g)$weight>0)]$association <- "+ve"
+
+# Convert edge weights to absolute values
+E(g)$weight <- abs(E(g)$weight)
+```
+
+```{r}
+# Remove edges    make this general to both types of correlations 
+
+
+
+
+
+
+
+
+###
+g <- delete_edges(g, E(g)[which(E(g)$weight<0.55)])
+
+# Remove any vertices remaining that have no edges
+g <- delete.vertices(g, degree(g)==0)
+
+# Assign names to the graph vertices (optional)
+V(g)$name <- V(g)$name
+
+# Change shape of graph vertices
+V(g)$shape <- "sphere"
+
+# Change colour of graph vertices
+V(g)$color <- "skyblue"
+
+```
+
+```{r}
+
+coords <- layout_with_kk(g)  #to fix coordinates of nodes 
+
+
+```
+
+```{r}
+
+########
+library(tidygraph)
+library(ggraph)
+
+#define correctly ordered type type
+type <- V(g)$name
+
+
+# ref$Feature <- gsub("_","",ref$Feature)
+
+
+```
+
+```{r}
+id <- c(1:length(type))
+
+#get metabolite and taxa info 
+
+
+
+
+###CHANGE THIS
+#define correctly ordered VIP values  -- not actually VIP - replace with ???
+# VIP <- g_b[type]
+
+VIP <- rep(5,length(V(g)))
+#VIP <- 
+
+
+type[which(type %in% baits)] <- "POI"
+type[which(type %in% spikes)] <- "RP"
+
+type[-which(type %in% c("POI","RP"))] <- "URP"
+
+
+tidynet <- as_tbl_graph(g)
+
+tidynet <- tidynet %>%
+  activate(nodes) %>%
+  mutate(VIP = VIP)
+
+tidynet <- tidynet %>%
+  activate(nodes) %>%
+  mutate(type = type)
+
+
+colours = c("POI" = "purple", "RP" = "orange", "URP" = "lightgreen")   ##adapt this for 3 different pathway types
+
+edge_colours <- c("+ve" = "grey", "-ve" = "blue")
+
+
+realnet <- tidynet
+
+#edge_linetype <- round(E(g)$weight, digits = 1)
+  
+#cols_f <- colorRampPalette(RColorBrewer::brewer.pal(11, 'Spectral'))
+
+# pdf(paste0(Sys.Date(),"_net_test.pdf"))
+realplot <- ggraph(tidynet, layout = coords) + 
+  geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) + #, linetype = association)) + 
+  scale_edge_color_manual(values = edge_colours, guide = "none") +
+  #scale_edge_linetype_continuous(values = edge_linetype) +
+  geom_node_point(
+    aes(size = VIP, color = type), show.legend=FALSE
+    #size = 4
+  ) +
+  geom_node_point(
+    aes(color = type)
+    #size = 4
+  ) +
+  scale_color_manual(values = colours) + 
+  # geom_node_text(label = id, alpha = 1, family = "mono", fontface = "bold", size = 5)+  #, fontface = "italic"
+  
+  theme_void() #+
+ # theme(legend.position = "none")
+# dev.off()
+
+
+
+
+
+################################################################################
+
+
+
+
+
+```
+
+
+```{r}
+#only take nodes and layout from above
+
+#remake graph or replace weights and edges with between group variance added
+
+#remake adj with only names(V(g)) and calculate weights on data not residuals
+
+cand_vals <- data[,which(colnames(data) %in% names(V(g)))]
+
+adj <- cor(cand_vals)
+
+rownames(adj) <- colnames(cand_vals)
+colnames(adj) <- colnames(cand_vals)
+
+
+
+g <- graph.adjacency(
+  as.matrix(as.dist(adj)),
+  mode="undirected",
+  weighted=TRUE,
+  diag=FALSE
+)
+
+g <- simplify(g, remove.multiple=TRUE, remove.loops=FALSE)
+
+# Colour negative correlation edges as blue
+E(g)[which(E(g)$weight<0)]$association <- "-ve"
+# Colour positive correlation edges as red
+E(g)[which(E(g)$weight>0)]$association <- "+ve"
+
+# Convert edge weights to absolute values
+E(g)$weight <- abs(E(g)$weight)
+
+
+
+###
+g <- delete_edges(g, E(g)[which(E(g)$weight<0.4)])
+
+# Remove any vertices remaining that have no edges
+g <- delete.vertices(g, degree(g)==0)
+
+# Assign names to the graph vertices (optional)
+V(g)$name <- V(g)$name
+
+# Change shape of graph vertices
+V(g)$shape <- "sphere"
+
+# Change colour of graph vertices
+V(g)$color <- "skyblue"
+
+
+#define correctly ordered type type
+type <- V(g)$name
+
+
+# ref$Feature <- gsub("_","",ref$Feature)
+
+
+```
+
+```{r}
+id <- c(1:length(type))
+
+#get metabolite and taxa info 
+
+
+
+
+###CHANGE THIS
+#define correctly ordered VIP values  -- not actually VIP - replace with ???
+# VIP <- g_b[type]
+
+VIP <- rep(5,length(V(g)))
+# #VIP <- 
+# 
+# 
+type[which(type %in% baits)] <- "POI"
+type[which(type %in% spikes)] <- "RP"
+
+type[-which(type %in% c("POI","RP"))] <- "URP"
+
+
+tidynet <- as_tbl_graph(g)
+
+tidynet <- tidynet %>%
+  activate(nodes) %>%
+  mutate(VIP = VIP)
+
+tidynet <- tidynet %>%
+  activate(nodes) %>%
+  mutate(type = type)
+
+
+colours = c("POI" = "purple", "RP" = "orange", "URP" = "lightgreen")   ##adapt this for 3 different pathway types
+
+edge_colours <- c("+ve" = "grey", "-ve" = "blue")
+
+badnet <- tidynet
+
+```
+
+```{r}
+
+badplot <- ggraph(tidynet, layout = coords) + 
+  geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) + #, linetype = association)) + 
+  scale_edge_color_manual(values = edge_colours, guide = "none") +
+  #scale_edge_linetype_continuous(values = edge_linetype) +
+  geom_node_point(
+    aes(size = VIP, color = type), show.legend=FALSE
+    #size = 4
+  ) +
+  geom_node_point(
+    aes(color = type)
+    #size = 4
+  ) +
+  scale_color_manual(values = colours) + 
+  # geom_node_text(label = id, alpha = 1, family = "mono", fontface = "bold", size = 5)+  #, fontface = "italic"
+  
+  theme_void() #+
+ # theme(legend.position = "none")
+# dev.off()
+
+  
+  
+  
+  # 
+  # 
+  # ggraph(tidynet, layout = coords) + 
+  # geom_edge_link(aes(colour = association, alpha = weight)) + #, linetype = association)) + 
+  # scale_edge_color_manual(values = edge_colours) +
+  # #scale_edge_linetype_continuous(values = edge_linetype) +
+  # geom_node_point(
+  #   aes(size = VIP, color = type),
+  #   #size = 4
+  # ) +
+  # scale_color_manual(values = colours) + 
+  # # geom_node_text(label = id, alpha = 1, family = "mono", fontface = "bold", size = 5)+  #, fontface = "italic"
+  # 
+  # theme_void()# +
+  # # theme(legend.position = "none")
+
+```
+
+
+```{r}
+
+png("networktypes.png", height = 360)
+realplot + badplot + plot_annotation("Pathway Types", tag_levels = 'A') + plot_layout(guides = "collect")
+dev.off()
+
+```
+
+
+<!-- Animations  -->
+
+<!-- ```{r} -->
+<!-- s50 <- list(badnet, realnet) -->
+
+<!-- ##CHANGE THIS -->
+<!-- #adapting from https://www.r-bloggers.com/2021/09/animating-network-evolutions-with-gganimate/ -->
+<!-- #losing type type  -->
+<!-- xy <- layout_as_dynamic(s50, alpha = 0.2) -->
+
+<!-- nodes_lst <- lapply(1:length(s50), function(i) { -->
+<!--   cbind(igraph::as_data_frame(s50[[i]], "vertices"), -->
+<!--     x = xy[[i]][, 1], y = xy[[i]][, 2], frame = i -->
+<!--   ) -->
+<!-- }) -->
+
+<!-- edges_lst <- lapply(1:length(s50), function(i) cbind(igraph::as_data_frame(s50[[i]], "edges"), frame = i)) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- edges_lst <- lapply(1:length(s50), function(i) { -->
+<!--   edges_lst[[i]]$x <- nodes_lst[[i]]$x[match(edges_lst[[i]]$from, nodes_lst[[i]]$name)] -->
+<!--   edges_lst[[i]]$y <- nodes_lst[[i]]$y[match(edges_lst[[i]]$from, nodes_lst[[i]]$name)] -->
+<!--   edges_lst[[i]]$xend <- nodes_lst[[i]]$x[match(edges_lst[[i]]$to, nodes_lst[[i]]$name)] -->
+<!--   edges_lst[[i]]$yend <- nodes_lst[[i]]$y[match(edges_lst[[i]]$to, nodes_lst[[i]]$name)] -->
+<!--   edges_lst[[i]]$id <- paste0(edges_lst[[i]]$from, "-", edges_lst[[i]]$to) -->
+<!--   edges_lst[[i]]$status <- TRUE -->
+<!--   # edges_lst[[i]]$association <-  -->
+<!--   edges_lst[[i]] -->
+<!-- }) -->
+
+<!-- head(edges_lst[[1]]) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+
+<!-- ##CHANGE THIS -->
+<!-- #need to get weight and association into all_edges -->
+
+<!-- get_attributes <- function(x){ -->
+<!--  do.call(cbind,get.edge.attribute(x)) -->
+<!-- } -->
+
+<!-- edg_attr <- do.call(rbind,lapply(s50,get_attributes)) -->
+
+<!-- # edg_attr <- edg_attr[!duplicated(edg_attr),] -->
+
+
+<!-- all_edges <- do.call("rbind", lapply(s50, get.edgelist)) -->
+<!-- all_edges <- cbind(all_edges,edg_attr) -->
+
+<!-- all_edges <- all_edges[!duplicated(all_edges), ] -->
+<!-- all_edges <- cbind.data.frame(all_edges, paste0(all_edges[, 1], "-", all_edges[, 2])) -->
+
+<!-- colnames(all_edges)[c(1,2,5)] <- c("from","to","id") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ##CHANGE THIS -->
+<!-- #weight and association missing from temp -->
+
+
+
+<!-- edges_lst <- lapply(1:length(s50), function(i) { -->
+<!--   idx <- which(!all_edges[, 5] %in% edges_lst[[i]]$id) -->
+<!--   if (length(idx != 0)) { -->
+<!--     tmp <- all_edges[idx,]#data.frame(from = all_edges[idx, 1], to = all_edges[idx, 2], id = all_edges[idx, 5]) -->
+<!--     tmp$x <- nodes_lst[[i]]$x[match(tmp$from, nodes_lst[[i]]$name)] -->
+<!--     tmp$y <- nodes_lst[[i]]$y[match(tmp$from, nodes_lst[[i]]$name)] -->
+<!--     tmp$xend <- nodes_lst[[i]]$x[match(tmp$to, nodes_lst[[i]]$name)] -->
+<!--     tmp$yend <- nodes_lst[[i]]$y[match(tmp$to, nodes_lst[[i]]$name)] -->
+<!--     tmp$frame <- i -->
+<!--     tmp$status <- FALSE -->
+<!--     edges_lst[[i]] <- rbind(edges_lst[[i]], tmp) -->
+<!--   } -->
+<!--   edges_lst[[i]] -->
+<!-- }) -->
+
+
+
+<!-- edges_df <- do.call("rbind", edges_lst) -->
+<!-- nodes_df <- do.call("rbind", nodes_lst) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+
+<!-- ##need to apply coordinates form realnet to badnet -->
+<!-- gif <- ggplot() + -->
+<!--   geom_segment( -->
+<!--     data = edges_df, -->
+<!--     aes(x = x, xend = xend, y = y, yend = yend, group = id, alpha = status),  -->
+<!--     show.legend = FALSE -->
+<!--   ) + -->
+<!--   geom_point( -->
+<!--     data = nodes_df, aes(x, y, group = name, fill = type), -->
+<!--     shape = 21, size = 4, show.legend = FALSE -->
+<!--   ) + -->
+<!--   scale_fill_manual(values = colours) + -->
+<!--   scale_alpha_manual(values = c(0, 1)) + -->
+<!--   ease_aes("linear") + -->
+<!--   transition_states(frame, state_length = 0.5, wrap = FALSE) + -->
+<!--   # labs(title = "Wave {closest_state}") + -->
+<!--   theme_void() #%>% animate(end_pause = 0) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- anim_save("network_test.gif", gif, end_pause = 0) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ##CHANGE THIS -->
+<!-- ##add these parameters into the code snippet above -->
+<!-- ggraph(tidynet, layout = coords) +  -->
+<!--   geom_edge_link(aes(colour = association, alpha = weight)) + #, linetype = association)) +  -->
+<!--   scale_edge_color_manual(values = edge_colours) + -->
+<!--   #scale_edge_linetype_continuous(values = edge_linetype) + -->
+<!--   geom_node_point( -->
+<!--     aes(size = VIP, color = type), -->
+<!--     #size = 4 -->
+<!--   ) + -->
+<!--   scale_color_manual(values = colours) +  -->
+<!--   geom_node_text(label = id, alpha = 1, family = "mono", fontface = "bold", size = 5)+  #, fontface = "italic" -->
+
+<!--   theme_void() -->
+
+<!-- ``` -->
+

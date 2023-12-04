@@ -1,0 +1,21 @@
+Transcripts ID	Gene name
+Os06t0493600-01	PT1
+Os03t0150800-01	PT2
+Os10t0444600-01	PT3
+Os08t0564000-01	PT6
+Os10t0444700-01	PT8
+Os06t0324800-01	PT9
+Os06t0325200-01	PT10
+Os07t0187700-01	Phosphate Transporter Facilitator 1
+Os08t0156600-01	Vacuolar Pi Efflux Transporter 2
+Os04t0555300-01	Vacuolar Pi Efflux Transporter 1
+Os02t0202200-01	SPX2
+Os10t0392600-01	SPX3
+Os03t0406100-01	SPX5
+Os07t0614700-01	SPX6-01
+Os07t0614700-02	SPX6-02
+Os02t0678200-01	SPX-MFS2
+Os11t0593000-01	Non-Specific Phospholipase C3
+Os12t0637100-02	Purple Acid Phosphatase 10C
+Os02t0514500-01	Glycerophosphodiester phosphodiesterase 2
+Os05t0387200-01	Sulfoquinovosyl Diacylglycerol Synthase 1
