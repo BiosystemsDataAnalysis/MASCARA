@@ -8,5 +8,5 @@ The scripts used to create them are contained in order in /run_first.
 
 Some still to be added.
 
-
+After ensuring all necessary pacakges installed the R/Paper_markdown.Rmd file works to reproduce the manuscript and associated figures.
 
