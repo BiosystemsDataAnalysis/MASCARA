@@ -25,7 +25,7 @@ library(mixOmics)
 library(pracma)
 library(pls)
 
-source("DATA_SIM_FUNCS_DEV.R")
+source("../DATA_SIM_FUNCS.R")
 F1_plot <- F1_plot_no_plot
 nreps <- 3
 ncands <- 500
@@ -73,17 +73,9 @@ MASCARA4_test <- function(resids,ref, baits, spikes, ncands){
   y <- colMeans(spls_res$loadings$Y)
 
   U <- spls_res$loadings$X
-  
-  # UTP <- ((U %*% y)/norm(y, "2")) * y
-  # UTP <- ((U %*% y)/dot(y,y)) * y   #_9
-  
-  # UTP <- (dot(t(U),y)/dot(y,y)) * y  #_10
-  
   UTP <- (dot(t(U),y)/dot(y,y))
   
   sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = T)])
-  
-  # sPLS_bait_cands <- as.data.frame(UTP[order(UTP[,1], decreasing = T),])  #_9 and below
   
   sPLS_maxima_cands <- sPLS_bait_cands
   
@@ -101,10 +93,7 @@ MASCARA4_test <- function(resids,ref, baits, spikes, ncands){
 
 
 
-# baits <- paste0("X_",c(1989:1996))   #501:510,
-# baits <- paste0("X_",c(1985:1996))   #501:510
 
-# baits <- paste0("X_",c(1989:1992))
 # spikes <- paste0("X_",c(1977:1988))
 baits <- paste0("X_",c(1985:1988))   #501:510
 spikes <- paste0("X_",c(1989:2000))
@@ -112,9 +101,6 @@ spikes <- paste0("X_",c(1989:2000))
 
 meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
 colnames(meta) <- c("growth_condition","time","interaction")
-# meta <- as.data.frame(apply(meta,2,factor))
-
-# meta <- as.data.frame(apply(meta,2,factor))
 
 
 sim_data <- Create_Core_DEV(nreps = 3, meta = meta, plot = F, 
@@ -153,34 +139,7 @@ ref$Baits[1:24] <- "ab1-ve"
 ref$Description <- ref$Baits
 
 
-# a_ab_p3 <- c(rep(0,185),rnorm(15,mean = -0.5, sd = 0.25), rnorm(15,mean = 0.5, sd = 0.25), rep(0,1685))
-#   a_ab_p4 <- c(rep(0,85),rnorm(15,mean = -0.5, sd = 0.25), rnorm(15,mean = 0.5, sd = 0.25), rep(0,1885))
-# 
 
-# baits <- paste0("X_",c(1977:1992))   #501:510
-
-# E_lev <-  c(0:20)/10
-# time_lev <- c(0:20)/10
-
-
-
-
-# y <- rep((c(0:20)/33.3333333333333333333333333333333),40)
-# x <-  c(1:10) * 10
-# x <- rep(x,each = 84)
-# 
-# z <- x*y
-
-
-# y <- rep((c(0:10)/33.3333333333333333333333333333333)*2)
-# x <-  c(0:10) * 5
-# 
-# 
-# x <- rep(x,each = length(y))
-# y <- rep(y, length(unique(x)))
-# 
-# 
-# z <- x*y
 
 y <- rep((c(0:10)/50))
 x <-  c(0:10) * 10     #5
@@ -221,34 +180,6 @@ for(i in 1:length(ERs)){
 }
 
 
-# main_lev  <-  c(0:20)/4
-# 
-# # E_lev <- c(0:10)/20
-# ERs <- c(1:10) * 10
-# 
-# X_funced <- list()
-# names <- c()
-# i <- NULL
-# l <- 1
-# for(i in 1:length(ERs)){
-#   j <- NULL
-#   for(j in 1:length(main_lev)){
-#     
-#     
-#     X_funced[[l]] <- Create_Core_DEV(nreps = 3, meta = meta,
-#                                      EffectSize = c(X_a_ab = main_lev[j], time = 1, E = 0.3, mu = 1, Struc_E = 0.5), 
-#                                      struc_resid = T, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1.5,0.7,0.6,0.1),
-#                                      b_sigma = c(1,0), irr_spikes = FALSE, SCORE_SEED = 2541, 
-#                                      plot = FALSE, Experiment_responders = ERs[i], ts = 3)
-#     
-#     names[l] <- paste(ERs[i],main_lev[j], sep = "_")
-#     l <- l + 1
-#     
-#     
-#   }
-#   
-#   
-# }
 
 
 Ranked_Coexp_HIGH <- function(X, baits, spikes, ncands){
@@ -314,9 +245,7 @@ while(i < length(X_funced) + 1){
     MASCARA_CANDS[,i] <- rownames(MASCARAh[[2]])
     
     
-    ##add MASCA here and below for save RDS 
-    
-    
+
     
     i <- i + 1
     
@@ -348,16 +277,3 @@ Noise_sim <- list(ASCA_RES, PLS_RES, COEXP_HIGH_RES, MASCARA_RES)
 saveRDS(Noise_sim, "Noise_Sim_Coexp_23_07_26_11.RDS")
 
 
-###################################################
-
-
-
-
-# 
-# Noise_cands <- list(ASCA_CANDS, PLS_CANDS, COEXP_HIGH_CANDS,MASCARA_CANDS)
-# 
-# # saveRDS(Noise_sim, "Noise_Sim_220926.RDS")
-# 
-# saveRDS(Noise_cands, "Noise_Sim_Coexp_23_02_19s_Cands_6.RDS")
-# # saveRDS(X_funced, "Datasets_Noise_Sim_220926_Noise_Sim_Tests_6.RDS")
-# 

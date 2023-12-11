@@ -30,11 +30,10 @@ loadfonts(device = "win", quiet = TRUE)
 ###partial correlations
 
 library(ppcor)
-#library(matlib)
 library(psych)
 
 #
-# plot residuals and full 
+# plot residuals and full (with tweaks for problem demonstration)
 
 baits <- c(baits,spikes[1:5])
 spikes <- spikes[-c(1:5)]
@@ -44,13 +43,6 @@ data <- sim_data[[1]]
 
 
 cand_vals <- residuals[,1970:2000]    #rgs[which(rownames(rgs) %in% names(g_b)[1:50]),]
-
-# cand_vals <- data[,1970:2000]
-
-##CHANGE THIS 
-#make p3 interconnections stronger, 
-#make p3 connect weakly to p2 through one or two nodes, 
-#sparsify p2 and p3 connections 
 
 
 adj <- cor(cand_vals)
@@ -68,8 +60,6 @@ W <- matrix(sample(c(0,0,0,0,1),pways*pways, replace = T), nrow = pways)
 
 adj[which(rownames(adj) %in% c(baits,spikes)),which(colnames(adj) %in% c(baits,spikes))] <- adj[which(rownames(adj) %in% c(baits,spikes)),which(colnames(adj) %in% c(baits,spikes))] * W
 
-
-#adj[which(rownames(adj) %in% baits),which(colnames(adj) %in% spikes)] <- adj[which(rownames(adj) %in% baits),which(colnames(adj) %in% c(spikes))] * W
 ```
 
 
@@ -83,7 +73,7 @@ adj[-which(rownames(adj) %in% c(baits,spikes)),-which(colnames(adj) %in% c(baits
 ```
 
 ```{r}
-#sparsify p1 p2 connections 
+#randomly sparsify p1 p2 connections 
 
 set.seed(22)
 
@@ -98,10 +88,6 @@ adj[which(rownames(adj) %in% spikes),which(colnames(adj) %in% baits)] <- adj[whi
 
 
 ```{r}
-
-##need to know which nodes are in at least one of the conditions before here 
-
-
 library(igraph)
 
 g <- graph.adjacency(
@@ -113,9 +99,7 @@ g <- graph.adjacency(
 
 g <- simplify(g, remove.multiple=TRUE, remove.loops=FALSE)
 
-# Colour negative correlation edges as blue
 E(g)[which(E(g)$weight<0)]$association <- "-ve"
-# Colour positive correlation edges as red
 E(g)[which(E(g)$weight>0)]$association <- "+ve"
 
 # Convert edge weights to absolute values
@@ -123,29 +107,13 @@ E(g)$weight <- abs(E(g)$weight)
 ```
 
 ```{r}
-# Remove edges    make this general to both types of correlations 
-
-
-
-
-
-
-
-
 ###
 g <- delete_edges(g, E(g)[which(E(g)$weight<0.55)])
 
-# Remove any vertices remaining that have no edges
+# Remove nodes with no edges
 g <- delete.vertices(g, degree(g)==0)
 
-# Assign names to the graph vertices (optional)
 V(g)$name <- V(g)$name
-
-# Change shape of graph vertices
-V(g)$shape <- "sphere"
-
-# Change colour of graph vertices
-V(g)$color <- "skyblue"
 
 ```
 
@@ -162,29 +130,14 @@ coords <- layout_with_kk(g)  #to fix coordinates of nodes
 library(tidygraph)
 library(ggraph)
 
-#define correctly ordered type type
 type <- V(g)$name
-
-
-# ref$Feature <- gsub("_","",ref$Feature)
-
-
 ```
 
 ```{r}
 id <- c(1:length(type))
 
-#get metabolite and taxa info 
-
-
-
-
-###CHANGE THIS
-#define correctly ordered VIP values  -- not actually VIP - replace with ???
-# VIP <- g_b[type]
 
 VIP <- rep(5,length(V(g)))
-#VIP <- 
 
 
 type[which(type %in% baits)] <- "POI"
@@ -204,45 +157,27 @@ tidynet <- tidynet %>%
   mutate(type = type)
 
 
-colours = c("POI" = "purple", "RP" = "orange", "URP" = "lightgreen")   ##adapt this for 3 different pathway types
+colours = c("POI" = "purple", "RP" = "orange", "URP" = "lightgreen")   
 
 edge_colours <- c("+ve" = "grey", "-ve" = "blue")
 
 
 realnet <- tidynet
 
-#edge_linetype <- round(E(g)$weight, digits = 1)
-  
-#cols_f <- colorRampPalette(RColorBrewer::brewer.pal(11, 'Spectral'))
 
-# pdf(paste0(Sys.Date(),"_net_test.pdf"))
+
 realplot <- ggraph(tidynet, layout = coords) + 
-  geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) + #, linetype = association)) + 
+  geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) +  
   scale_edge_color_manual(values = edge_colours, guide = "none") +
-  #scale_edge_linetype_continuous(values = edge_linetype) +
   geom_node_point(
     aes(size = VIP, color = type), show.legend=FALSE
-    #size = 4
   ) +
   geom_node_point(
     aes(color = type)
-    #size = 4
   ) +
   scale_color_manual(values = colours) + 
-  # geom_node_text(label = id, alpha = 1, family = "mono", fontface = "bold", size = 5)+  #, fontface = "italic"
-  
-  theme_void() #+
- # theme(legend.position = "none")
-# dev.off()
 
-
-
-
-
-################################################################################
-
-
-
+  theme_void() 
 
 
 ```
@@ -286,24 +221,17 @@ E(g)$weight <- abs(E(g)$weight)
 ###
 g <- delete_edges(g, E(g)[which(E(g)$weight<0.4)])
 
-# Remove any vertices remaining that have no edges
 g <- delete.vertices(g, degree(g)==0)
 
-# Assign names to the graph vertices (optional)
 V(g)$name <- V(g)$name
 
-# Change shape of graph vertices
 V(g)$shape <- "sphere"
-
-# Change colour of graph vertices
-V(g)$color <- "skyblue"
 
 
 #define correctly ordered type type
 type <- V(g)$name
 
 
-# ref$Feature <- gsub("_","",ref$Feature)
 
 
 ```
@@ -311,23 +239,14 @@ type <- V(g)$name
 ```{r}
 id <- c(1:length(type))
 
-#get metabolite and taxa info 
-
-
-
-
-###CHANGE THIS
-#define correctly ordered VIP values  -- not actually VIP - replace with ???
-# VIP <- g_b[type]
 
 VIP <- rep(5,length(V(g)))
-# #VIP <- 
-# 
-# 
+
 type[which(type %in% baits)] <- "POI"
 type[which(type %in% spikes)] <- "RP"
 
 type[-which(type %in% c("POI","RP"))] <- "URP"
+
 
 
 tidynet <- as_tbl_graph(g)
@@ -341,7 +260,7 @@ tidynet <- tidynet %>%
   mutate(type = type)
 
 
-colours = c("POI" = "purple", "RP" = "orange", "URP" = "lightgreen")   ##adapt this for 3 different pathway types
+colours = c("POI" = "purple", "RP" = "orange", "URP" = "lightgreen")  
 
 edge_colours <- c("+ve" = "grey", "-ve" = "blue")
 
@@ -352,43 +271,20 @@ badnet <- tidynet
 ```{r}
 
 badplot <- ggraph(tidynet, layout = coords) + 
-  geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) + #, linetype = association)) + 
+  geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) + 
   scale_edge_color_manual(values = edge_colours, guide = "none") +
-  #scale_edge_linetype_continuous(values = edge_linetype) +
   geom_node_point(
     aes(size = VIP, color = type), show.legend=FALSE
-    #size = 4
   ) +
   geom_node_point(
     aes(color = type)
-    #size = 4
   ) +
   scale_color_manual(values = colours) + 
-  # geom_node_text(label = id, alpha = 1, family = "mono", fontface = "bold", size = 5)+  #, fontface = "italic"
-  
-  theme_void() #+
- # theme(legend.position = "none")
-# dev.off()
+  theme_void() 
 
   
   
-  
-  # 
-  # 
-  # ggraph(tidynet, layout = coords) + 
-  # geom_edge_link(aes(colour = association, alpha = weight)) + #, linetype = association)) + 
-  # scale_edge_color_manual(values = edge_colours) +
-  # #scale_edge_linetype_continuous(values = edge_linetype) +
-  # geom_node_point(
-  #   aes(size = VIP, color = type),
-  #   #size = 4
-  # ) +
-  # scale_color_manual(values = colours) + 
-  # # geom_node_text(label = id, alpha = 1, family = "mono", fontface = "bold", size = 5)+  #, fontface = "italic"
-  # 
-  # theme_void()# +
-  # # theme(legend.position = "none")
-
+ 
 ```
 
 

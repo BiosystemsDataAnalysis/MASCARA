@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, root.dir = "../")
 ```
 
 ```{r, echo=FALSE}
@@ -37,15 +37,11 @@ library(plotly)
 library(mixOmics)
 library(DiscriMiner)
 library(pracma)
-# library(NineteenEightyR)
 library(matlib)
 library(truncnorm)
-# library(sf)
 
 
-source("DATA_SIM_FUNCS.R")
-
-
+source("../DATA_SIM_FUNCS.R")
 ```
 
 ```{r}
@@ -59,18 +55,12 @@ Experiment_responders <- 30
 
 set.seed(3)
 rnd_seed <- abs(rnorm(3, mean = 0.7, sd = 0.5))
-#c(1,0.8,0.3)
-# Create_Core_DEV
+
 sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, plot = TRUE, 
                         EffectSize = c(X_a_ab = 5, time = 1, E = 10, mu = 1, Struc_E = 1), 
                         struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
                         b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, Experiment_responders = Experiment_responders,
-                        struc_seed = 127)  #12
-
-#list(X,P,Pb,a_ab,PLOT, X_a_ab,time, Struc_E )
-
-###plot error in sim_data[[5]] 
-
+                        struc_seed = 127)  
 ```
 
 ```{r}
@@ -81,9 +71,6 @@ sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta,
                         b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, Experiment_responders = Experiment_responders,
                         struc_seed = 127, score_plot = FALSE, plot = FALSE)  #12
 
-# sim_data[[1]] <- sim_data[[1]][,1850:2000]
-
-# image(sim_data)
 ```
 
 ```{r}
@@ -322,20 +309,13 @@ p5
 
 ```{r}
 
-# data <- (0.1 * interaction) + (1.5*time) + (0.5*ambient) + (0*noise)
-# 
+ 
 input <- data
-# 
-# input <- cbind.data.frame(input,input,input)
 
 ```
 
 ```{r}
-# data <- (0.1 * interaction) + (1.5*time) + ambient + noise
 
-# input <- input + rnorm(nrow(input) * ncol(input),mean = 0, sd = 1)
-#replace with simulation input
-# colnames(input) <- make.names(colnames(input))
 
 spls_res <- simpls.fit(data.matrix(input[,1:2]), data.matrix(input[,-c(1:2)]), ncomp = 2)
 
@@ -432,112 +412,10 @@ p2 <- ggplot(mData, aes(Samples,Features, fill= value)) +
 p0 + (p1 / p2) + theme(legend.position = "none")
 ```
 
-```{r}
-MASCARA4_test_1 <- function(resids,ref, baits, spikes, ncands){
-  
-  Fref <- ref
-  
-  spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], 
-                   resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  # spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)], 
-  #                  resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  sPLS_cands <- cbind.data.frame(abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$X, spls_res$loadings$X) #  * spls_res$prop_expl_var$X
-  sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = TRUE),]
-  
-  importance <- paste0(round(spls_res$prop_expl_var$X * 100, digits = 2), "%")
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_cands),Fref2$Feature),]
-  
-  #####
-
-  y <- colMeans(spls_res$loadings$Y)
-
-  U <- spls_res$loadings$X
-  
-  # UTP <- ((U %*% y)/norm(y, "2")) * y
-  # UTP <- ((U %*% y)/dot(y,y)) * y   #_9
-  
-  # UTP <- (dot(t(U),y)/dot(y,y)) * y  #_10
-  
-  UTP <- (dot(t(U),y)/dot(y,y))
-  
-  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
-  
-  # sPLS_bait_cands <- as.data.frame(UTP[order(UTP[,1], decreasing = TRUE),])  #_9 and below
-  
-  sPLS_maxima_cands <- sPLS_bait_cands
-  
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_maxima_cands),Fref2$Feature),]
-  
- 
-  RP <- prod(which(rownames(sPLS_maxima_cands) %in% spikes))^(1/length(spikes))
-  
-  
-
-  return(list(RP, sPLS_maxima_cands,UTP))
-}
-
-
-
-MASCARA4_test_2 <- function(resids,ref, baits, spikes, ncands){
-  
-  Fref <- ref
-  
-  spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], 
-                   resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  # spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)], 
-  #                  resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  sPLS_cands <- cbind.data.frame(abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$Y, spls_res$loadings$X) #  * spls_res$prop_expl_var$X
-  sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = TRUE),]
-  
-  importance <- paste0(round(spls_res$prop_expl_var$X * 100, digits = 2), "%")
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_cands),Fref2$Feature),]
-  
-  #####
-
-  y <- colMeans(spls_res$loadings$Y)
-
-  U <- spls_res$loadings$X
-  
-  # UTP <- ((U %*% y)/norm(y, "2")) * y
-  # UTP <- ((U %*% y)/dot(y,y)) * y   #_9
-  
-  # UTP <- (dot(t(U),y)/dot(y,y)) * y  #_10
-  
-  UTP <- (dot(t(U),y)/dot(y,y))
-  
-  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
-  
-  # sPLS_bait_cands <- as.data.frame(UTP[order(UTP[,1], decreasing = TRUE),])  #_9 and below
-  
-  sPLS_maxima_cands <- sPLS_bait_cands
-  
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_maxima_cands),Fref2$Feature),]
-  
- 
-  RP <- prod(which(rownames(sPLS_maxima_cands) %in% spikes))^(1/length(spikes))
-  
-  
-
-  return(list(RP, sPLS_maxima_cands,UTP))
-}
-
-```
 
 ```{r}
 ##feature selection alternatives
-source("MASCARA_Test_Funcs.R")
+source("../MASCARA_FUNCS.R")
 #default - target projection onto average Q in 2 dimensions
 resids <- ar[[3]]
 
@@ -563,29 +441,6 @@ which(rownames(res_VIP) %in% spikes)
 MASCARA_2 <- MASCARA4_test_2(ar[[3]], baits, spikes = spikes)
 which(rownames(MASCARA_2[[2]]) %in% spikes)
 
-
- 
-#PLS1 model with svd(baits)$T as response
-MASCARA_3 <- MASCARA4_test_3(ar[[3]], baits, spikes = spikes)
-which(rownames(MASCARA_3[[2]]) %in% spikes)
-
-# 
-# 
-# 
-
-#PLS1 model with svd(baits)$T as response and target projected deflation
-
-# MASCARA_4 <- MASCARA4_test_4(ar[[3]], baits, spikes = spikes)
-# which(rownames(MASCARA_4[[2]]) %in% spikes)
-
-
-
-
-
-# #PLS2 model with target projected deflation
-# 
-# 
-# 
 
 
 ```
@@ -616,15 +471,10 @@ which(rownames(res_VIP) %in% spikes)
 ```
 
 ```{r}
-source("MASCARA_Test_Funcs.R")
+source("../MASCARA_FUNCS.R")
 #classic
 MASCARA_2 <- MASCARA4_test_2(ar[[3]], baits, spikes = spikes)
 which(rownames(MASCARA_2[[2]]) %in% spikes)
-
-
-#u1 of baits as pls1 response
-MASCARA_3 <- MASCARA4_test_3(ar[[3]], baits, spikes = spikes)
-which(rownames(MASCARA_3[[2]]) %in% spikes)
 
 #sr
 MASCARA_4 <- MASCARA4_test_7(ar[[3]], baits, spikes = spikes)
@@ -633,13 +483,8 @@ which(rownames(MASCARA_4[[2]]) %in% spikes)
 
 
 #vip
-
 MASCARA_5 <- MASCARA4_test_8(ar[[3]], baits, spikes = spikes)
 which(rownames(MASCARA_5[[2]]) %in% spikes)
-
-
-#tpsr
-
 
 ```
 
@@ -651,7 +496,6 @@ which(rownames(MASCARA_5[[2]]) %in% spikes)
 loadings <- MASCARA_2[[4]]$loadings[]
 yloadings <- MASCARA_2[[4]]$Yloadings[]
 
-# yloadings[3,2] <- -0.5*yloadings[3,2]   #pure data manipulation for demo purposes
 
 scores <- MASCARA_2[[4]]$scores[]
 colnames(scores) <- gsub(" ","_", colnames(scores))
@@ -702,7 +546,6 @@ scores_r_baits <- cbind.data.frame(scores_r_baits, meta)
 yloadings <- t(apply(yloadings,1,rotate, y = rot.mat2))
 
 
-# loadings_r_baits <- rbind(loadings_r_baits, yloadings)
 
 ```
 
@@ -745,25 +588,8 @@ b <- ggplot(loadings_r_baits, aes(x = Comp_1, y = Comp_2, colour = ID, shape = I
 
     scale_color_manual(values=c('#E69F00',"black", '#56B4E9'))+
       geom_point(data = loadings_r_baits[which(loadings_r_baits$ID %in% c("Baits","Pathway")),], aes(size = 15)) +
-  # geom_point(data = yloadings, shape = 4, aes(x = Comp_1, y = Comp_2, size = 3 )) + 
   theme_bw()
 
 b
 ```
 
-```{r}
-
-#multiple PLS1 models with svd(baits) deflated
-
-
-```
-
-```{r}
-#remake simpls to deflate with target projected loadings 
-
-#first recreate simpls such that the output is the same as simpls.fit()
-
-#$projection -> T = XR
-
-
-```

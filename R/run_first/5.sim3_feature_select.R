@@ -24,8 +24,8 @@ library(caret)
 library(mixOmics)
 library(pracma)
 
-source("DATA_SIM_FUNCS_DEV.R")
-source("MASCARA_Test_Funcs.R")
+source("../DATA_SIM_FUNCS.R")
+source("../MASCARA_FUNCS.R")
 
 Create_Core_DEV <- Create_Core_DEV_2
 
@@ -34,15 +34,7 @@ F1_plot <- F1_plot_no_plot
 alphaN <- 2
 betaN <- 4
 ncands <- 500
-# baits <- paste0("X_",c(1989:1996))   #501:510,
-# baits <- paste0("X_",c(1985:1996))   #501:510
 
-
-
-
-
-# baits <- paste0("X_",c(1997:2000))
-# spikes <- paste0("X_",c(1985:1996))
 
 baits <- paste0("X_",c(1985:1988))   #501:510
 spikes <- paste0("X_",c(1989:2000))
@@ -235,13 +227,7 @@ while(i < length(X_funced) + 1){
     SVD1_RES[,i] <- MASCARAh[[1]]
     SVD1_CANDS[,i] <- rownames(MASCARAh[[2]])
     
-    # MASCARAh <- MASCARA4_test(ar[[3]], ref, baits, spikes = spikes, ncands)
-    # TPSR_RES[,i] <- MASCARAh[[1]]
-    # TPSR_CANDS[,i] <- rownames(MASCARAh[[2]])
-    # 
-    # 
-    
-    
+
     i <- i + 1
     
   },

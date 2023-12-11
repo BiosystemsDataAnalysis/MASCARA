@@ -37,13 +37,11 @@ library(plotly)
 library(mixOmics)
 library(DiscriMiner)
 library(pracma)
-# library(NineteenEightyR)
 library(matlib)
 library(truncnorm)
-# library(sf)
 
 
-source("DATA_SIM_FUNCS.R")
+source("../DATA_SIM_FUNCS.R")
 
 
 ```
@@ -57,70 +55,22 @@ meta <- as.data.frame(apply(meta,2,factor))  #9
 
 Experiment_responders <- 30
 
-set.seed(3)
-rnd_seed <- abs(rnorm(3, mean = 0.7, sd = 0.5))
-#c(1,0.8,0.3)
-# Create_Core_DEV
-sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, plot = TRUE, 
-                        EffectSize = c(X_a_ab = 5, time = 1, E = 10, mu = 1, Struc_E = 1), 
-                        struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
-                        b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, Experiment_responders = Experiment_responders,
-                        struc_seed = 127)  #12
-
-#list(X,P,Pb,a_ab,PLOT, X_a_ab,time, Struc_E )
-
-###plot error in sim_data[[5]] 
 
 ```
 
 ```{r}
 
 sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, 
-                        EffectSize = c(X_a_ab = 5, time = 1, E = 1, mu = 1, Struc_E = 0.4),    # E = 10, Struc_E = 1
+                        EffectSize = c(X_a_ab = 5, time = 1, E = 10, mu = 1, Struc_E = 1),    # E = 1, Struc_E = 0.4
                         struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
                         b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, Experiment_responders = Experiment_responders,
-                        struc_seed = 127, score_plot = FALSE, plot = FALSE)  #12
+                        struc_seed = 127, score_plot = FALSE, plot = FALSE)  
 
-# sim_data[[1]] <- sim_data[[1]][,1850:2000]
-
-# image(sim_data)
 ```
 
 ```{r}
 baits <- paste0("X_",c(1985:1988))   #501:510
 spikes <- paste0("X_",c(1989:2000))
-
-ref <- cbind.data.frame(Feature = colnames(sim_data[[1]]), sim_data[[2]], sim_data[[3]])
-cols <- colnames(ref[,-1])
-ref$Effect <- do.call(paste, c(ref[cols], sep = "_"))
-ref$Effect[which(ref$Effect == "0.5_0_0_0.1")] <- "Low PC1"
-ref$Effect[which(ref$Effect == "1_0_0_0.1")] <- "Medium PC1"
-ref$Effect[which(ref$Effect == "1.5_0_0_0.1")] <- "High PC1"
-ref$Effect[which(ref$Effect == "0_0.5_0.1_0")] <- "PC2"
-ref$Effect[grep("^0", ref$Effect)] <- "None"
-ref$Effect <- factor(ref$Effect, levels = c("Low PC1", "Medium PC1", "High PC1", "PC2", "None"))
-colnames(ref)[8] <- "Baits"
-
-ref$Description <- ref$Baits
-
-
-
-ref$Baits[1985:1988] <- "Baits"
-ref$Baits[1989:2000] <- "Candidates"
-
-ref$Baits[(2000 - (16 + Experiment_responders)):1984] <- "ab1+ve"
-# ref$Baits[1969:1976] <- "ab1+ve"
-ref$Baits[501:515] <- "ab2+ve"
-ref$Baits[486:500] <- "ab2-ve"
-# ref$Baits[1969:1976] <- "Expt_Independent"
-
-ref$Baits[1:24] <- "ab1-ve"
-
-
-
-ref$Description <- ref$Baits
-
-
 
 ar <- ASCA(sim_data[[1]], m = meta, Baits = baits, spikes = spikes, ncands = ncands, distance_calc = FALSE, Return_Model = FALSE)
 
@@ -161,10 +111,10 @@ colnames(mData)[1:2] <- c("Samples","Features")
 library(viridis)
 library(hrbrthemes)
 library(ggplot2)
-p1 <- ggplot(mData, aes(Samples, Features, fill= value)) + 
+p1 <- ggplot(mData, aes(Features, Samples, fill= value), show.legend = FALSE) + 
   geom_tile() +
   ggtitle("Growth Condition") +
-  scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
+  scale_fill_viridis(discrete=FALSE) +  
   theme_bw() +
   theme(axis.text.x=element_blank(), #remove x axis labels
         axis.ticks.x=element_blank(), #remove x axis ticks
@@ -178,12 +128,11 @@ p1 <- ggplot(mData, aes(Samples, Features, fill= value)) +
 
 mData <- reshape2::melt(time)
 colnames(mData)[1:2] <- c("Samples","Features")
-# mData$Features <- fct_rev(mData$Features)
 
 library(viridis)
 library(hrbrthemes)
 library(ggplot2)
-p2 <- ggplot(mData, aes(Samples, Features, fill= value)) + 
+p2 <- ggplot(mData, aes(Features, Samples, fill= value)) + 
   geom_tile() +
   ggtitle('Time') +
   scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
@@ -201,12 +150,11 @@ interaction <- int - time
 
 mData <- reshape2::melt(interaction)
 colnames(mData)[1:2] <- c("Samples","Features")
-# mData$Features <- fct_rev(mData$Features)
 
 library(viridis)
 library(hrbrthemes)
 library(ggplot2)
-p3 <- ggplot(mData, aes(Samples, Features, fill= value)) + 
+p3 <- ggplot(mData, aes(Features, Samples, fill= value)) + 
   geom_tile() +
   ggtitle('Interaction') +
   scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
@@ -222,12 +170,11 @@ p3 <- ggplot(mData, aes(Samples, Features, fill= value)) +
 
 mData <- reshape2::melt(ambient)
 colnames(mData)[1:2] <- c("Samples","Features")
-# mData$Features <- fct_rev(mData$Features)
 
 library(viridis)
 library(hrbrthemes)
 library(ggplot2)
-p4 <- ggplot(mData, aes(Samples, Features, fill= value)) + 
+p4 <- ggplot(mData, aes(Features, Samples, fill= value)) + 
   geom_tile() +
   ggtitle('Ambient') +
   scale_fill_viridis(discrete=FALSE ) +   #, limits = c(min,max)
@@ -242,12 +189,11 @@ p4 <- ggplot(mData, aes(Samples, Features, fill= value)) +
 
 mData <- reshape2::melt(noise)
 colnames(mData)[1:2] <- c("Samples","Features")
-# mData$Features <- fct_rev(mData$Features)
 
 library(viridis)
 library(hrbrthemes)
 library(ggplot2)
-p5 <- ggplot(mData, aes(Samples, Features, fill= value)) + 
+p5 <- ggplot(mData, aes(Features, Samples, fill= value)) + 
   geom_tile() +
   ggtitle('Residuals') +
   scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
@@ -264,12 +210,11 @@ p5 <- ggplot(mData, aes(Samples, Features, fill= value)) +
 data <- (0.1 * interaction) + (1.5*time) + ambient + noise
 mData <- reshape2::melt(data)
 colnames(mData)[1:2] <- c("Samples","Genes")
-# mData$Features <- fct_rev(mData$Features)
 
 library(viridis)
 library(hrbrthemes)
 library(ggplot2)
-p0 <- ggplot(mData, aes(Samples, Genes, fill= value)) + 
+p0 <- ggplot(mData, aes(Genes, Samples, fill= value)) + 
   geom_tile() +
   ggtitle('Data') +
   scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
@@ -277,23 +222,23 @@ p0 <- ggplot(mData, aes(Samples, Genes, fill= value)) +
   theme(axis.text.x=element_blank(), #remove x axis labels
         axis.ticks.x=element_blank(), #remove x axis ticks
         axis.text.y=element_blank(),  #remove y axis labels
-        axis.ticks.y=element_blank())#,
-        #axis.title.x = element_blank(),
-        #axis.title.y = element_blank())
+        axis.ticks.y=element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
 
 
 
 plots <- list(p1, p2, p3, p4, p5)
 
 p5
+
 ```
 
 ```{r}
-ps <- patchwork::patchworkGrob(wrap_plots(plots) + plot_layout(guides = "collect"))  #, heights = unit(c(5), c("cm")), 
-ps1 <- grid.arrange(ps)#, left = "Features", bottom = "Replicate Number                     ")
+ps <- patchwork::patchworkGrob(wrap_plots(plots) )    #+ plot_layout(guides = "collect") -
 
+ps1 <- grid.arrange(ps)
 
-# p5
 ```
 
 ```{r}
@@ -305,7 +250,7 @@ colnames(mData)[1:2] <- c("Samples","Features")
 library(viridis)
 library(hrbrthemes)
 library(ggplot2)
-p5 <- ggplot(mData, aes(Samples, Features, fill= value)) + 
+p5 <- ggplot(mData, aes(Features, Samples, fill= value)) + 
   geom_tile() +
   ggtitle('Residuals') +
   scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
@@ -322,20 +267,14 @@ p5
 
 ```{r}
 
-# data <- (0.1 * interaction) + (1.5*time) + (0.5*ambient) + (0*noise)
 # 
 input <- data
 # 
-# input <- cbind.data.frame(input,input,input)
 
 ```
 
 ```{r}
-# data <- (0.1 * interaction) + (1.5*time) + ambient + noise
 
-# input <- input + rnorm(nrow(input) * ncol(input),mean = 0, sd = 1)
-#replace with simulation input
-# colnames(input) <- make.names(colnames(input))
 
 spls_res <- simpls.fit(data.matrix(input[,1:2]), data.matrix(input[,-c(1:2)]), ncomp = 2)
 
@@ -353,274 +292,15 @@ Y_E <- spls_res$residuals[,2,]
 
 ```
 
-```{r}
-####PLS pattern visualisation change this
 
 
-data <- scores[]    # data.matrix(sim_data[[4]][,3:4])  #
-mData <- reshape2::melt(data)
-colnames(mData)[1:2] <- c("Samples","Features")
-# mData$Features <- fct_rev(mData$Features)
-
-library(viridis)
-library(hrbrthemes)
-library(ggplot2)
-p0 <- ggplot(mData, aes(Features,Samples, fill= value)) + 
-  geom_tile() +
-  ggtitle('Patterns (T)') +
-  scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
-  theme_bw() +
-  theme(axis.text.x=element_blank(), #remove x axis labels
-        axis.ticks.x=element_blank(), #remove x axis ticks
-        axis.text.y=element_blank(),  #remove y axis labels
-        axis.ticks.y=element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        legend.position = "none")
-
-
-
-# p0
-
-
-
-
-data <- input[,1:2]
-mData <- reshape2::melt(data)
-colnames(mData)[1:2] <- c("Samples","Features")
-# mData$Features <- fct_rev(mData$Features)
-
-library(viridis)
-library(hrbrthemes)
-library(ggplot2)
-p1 <- ggplot(mData, aes(Samples,Features, fill= value)) + 
-  geom_tile() +
-  ggtitle('Data; X') +
-  scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
-  theme_bw() +
-  theme(axis.text.x=element_blank(), #remove x axis labels
-        axis.ticks.x=element_blank(), #remove x axis ticks
-        axis.text.y=element_blank(),  #remove y axis labels
-        axis.ticks.y=element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        legend.position = "none")
-
-
-
-data <- input[,3:4]
-mData <- reshape2::melt(data)
-colnames(mData)[1:2] <- c("Samples","Features")
-# mData$Features <- fct_rev(mData$Features)
-
-library(viridis)
-library(hrbrthemes)
-library(ggplot2)
-p2 <- ggplot(mData, aes(Samples,Features, fill= value)) + 
-  geom_tile() +
-  ggtitle('Data; Y') +
-  scale_fill_viridis(discrete=FALSE) +  #, limits = c(min,max)
-  theme_bw() +
-  theme(axis.text.x=element_blank(), #remove x axis labels
-        axis.ticks.x=element_blank(), #remove x axis ticks
-        axis.text.y=element_blank(),  #remove y axis labels
-        axis.ticks.y=element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        legend.position = "none")
-
-p0 + (p1 / p2) + theme(legend.position = "none")
-```
 
 ```{r}
-MASCARA4_test_1 <- function(resids,ref, baits, spikes, ncands){
-  
-  Fref <- ref
-  
-  spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], 
-                   resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  # spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)], 
-  #                  resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  sPLS_cands <- cbind.data.frame(abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$X, spls_res$loadings$X) #  * spls_res$prop_expl_var$X
-  sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = TRUE),]
-  
-  importance <- paste0(round(spls_res$prop_expl_var$X * 100, digits = 2), "%")
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_cands),Fref2$Feature),]
-  
-  #####
+source("../MASCARA_FUNCS.R")
 
-  y <- colMeans(spls_res$loadings$Y)
-
-  U <- spls_res$loadings$X
-  
-  # UTP <- ((U %*% y)/norm(y, "2")) * y
-  # UTP <- ((U %*% y)/dot(y,y)) * y   #_9
-  
-  # UTP <- (dot(t(U),y)/dot(y,y)) * y  #_10
-  
-  UTP <- (dot(t(U),y)/dot(y,y))
-  
-  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
-  
-  # sPLS_bait_cands <- as.data.frame(UTP[order(UTP[,1], decreasing = TRUE),])  #_9 and below
-  
-  sPLS_maxima_cands <- sPLS_bait_cands
-  
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_maxima_cands),Fref2$Feature),]
-  
- 
-  RP <- prod(which(rownames(sPLS_maxima_cands) %in% spikes))^(1/length(spikes))
-  
-  
-
-  return(list(RP, sPLS_maxima_cands,UTP))
-}
-
-
-
-MASCARA4_test_2 <- function(resids,ref, baits, spikes, ncands){
-  
-  Fref <- ref
-  
-  spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], 
-                   resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  # spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)], 
-  #                  resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-  sPLS_cands <- cbind.data.frame(abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$Y, spls_res$loadings$X) #  * spls_res$prop_expl_var$X
-  sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = TRUE),]
-  
-  importance <- paste0(round(spls_res$prop_expl_var$X * 100, digits = 2), "%")
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_cands),Fref2$Feature),]
-  
-  #####
-
-  y <- colMeans(spls_res$loadings$Y)
-
-  U <- spls_res$loadings$X
-  
-  # UTP <- ((U %*% y)/norm(y, "2")) * y
-  # UTP <- ((U %*% y)/dot(y,y)) * y   #_9
-  
-  # UTP <- (dot(t(U),y)/dot(y,y)) * y  #_10
-  
-  UTP <- (dot(t(U),y)/dot(y,y))
-  
-  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
-  
-  # sPLS_bait_cands <- as.data.frame(UTP[order(UTP[,1], decreasing = TRUE),])  #_9 and below
-  
-  sPLS_maxima_cands <- sPLS_bait_cands
-  
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_maxima_cands),Fref2$Feature),]
-  
- 
-  RP <- prod(which(rownames(sPLS_maxima_cands) %in% spikes))^(1/length(spikes))
-  
-  
-
-  return(list(RP, sPLS_maxima_cands,UTP))
-}
-
-```
-
-```{r}
-##feature selection alternatives
-source("MASCARA_Test_Funcs.R")
-#default - target projection onto average Q in 2 dimensions
-resids <- ar[[3]]
-
-
-MASCARA_1 <- MASCARA4_test_1(ar[[3]], baits = baits, spikes = spikes)
-which(rownames(MASCARA_1[[2]]) %in% spikes)
-
-
-# # replacing mixomics with SIMPLS from pls package
-
-#1 component, absolute projections
-spls_res2.1 <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
-                   resids[,which(colnames(resids) %in% baits)], ncomp = 1)
-
-res_prj <- cbind.data.frame(rownames(spls_res2.1$projection),spls_res2.1$projection)
-res_VIP <- res_prj[order(abs(res_prj[,2]), decreasing = TRUE),]
-rownames(res_VIP) <- res_VIP[,1]
-
-which(rownames(res_VIP) %in% spikes)
-
-
-## 2 component target projection
+#classic; q bar target projection
 MASCARA_2 <- MASCARA4_test_2(ar[[3]], baits, spikes = spikes)
 which(rownames(MASCARA_2[[2]]) %in% spikes)
-
-
- 
-#PLS1 model with svd(baits)$T as response
-MASCARA_3 <- MASCARA4_test_3(ar[[3]], baits, spikes = spikes)
-which(rownames(MASCARA_3[[2]]) %in% spikes)
-
-# 
-# 
-# 
-
-#PLS1 model with svd(baits)$T as response and target projected deflation
-
-# MASCARA_4 <- MASCARA4_test_4(ar[[3]], baits, spikes = spikes)
-# which(rownames(MASCARA_4[[2]]) %in% spikes)
-
-
-
-
-
-# #PLS2 model with target projected deflation
-# 
-# 
-# 
-
-
-```
-
-```{r}
-resids <- ar[[3]]
-
-spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], 
-                 resids[,which(colnames(resids) %in% baits)], all.outputs = TRUE)
-  
-
-  
-
-spls_res2 <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
-                resids[,which(colnames(resids) %in% baits)], ncomp = 2)
-
-spls_res2.1 <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
-                   resids[,which(colnames(resids) %in% baits)], ncomp = 1)
-
-res_prj <- cbind.data.frame(rownames(spls_res2.1$projection),spls_res2.1$projection)
-res_VIP <- res_prj[order(abs(res_prj[,2]), decreasing = TRUE),]
-rownames(res_VIP) <- res_VIP[,1]
-
-which(rownames(res_VIP) %in% spikes)
-
-      
-
-```
-
-```{r}
-source("MASCARA_Test_Funcs.R")
-#classic
-MASCARA_2 <- MASCARA4_test_2(ar[[3]], baits, spikes = spikes)
-which(rownames(MASCARA_2[[2]]) %in% spikes)
-
 
 #u1 of baits as pls1 response
 MASCARA_3 <- MASCARA4_test_3(ar[[3]], baits, spikes = spikes)
@@ -630,15 +310,10 @@ which(rownames(MASCARA_3[[2]]) %in% spikes)
 MASCARA_4 <- MASCARA4_test_7(ar[[3]], baits, spikes = spikes)
 which(rownames(MASCARA_4[[2]]) %in% spikes)
 
-
-
 #vip
-
 MASCARA_5 <- MASCARA4_test_8(ar[[3]], baits, spikes = spikes)
 which(rownames(MASCARA_5[[2]]) %in% spikes)
 
-
-#tpsr
 
 
 ```
@@ -646,12 +321,10 @@ which(rownames(MASCARA_5[[2]]) %in% spikes)
 ```{r}
 #plotting qbar TP for demo
 
-# str(MASCARA_2[[4]])
 
 loadings <- MASCARA_2[[4]]$loadings[]
 yloadings <- MASCARA_2[[4]]$Yloadings[]
 
-# yloadings[3,2] <- -0.5*yloadings[3,2]   #pure data manipulation for demo purposes
 
 scores <- MASCARA_2[[4]]$scores[]
 colnames(scores) <- gsub(" ","_", colnames(scores))
@@ -660,7 +333,7 @@ colnames(loadings) <- gsub(" ","_", colnames(loadings))
 
 line <- colMeans(yloadings)
 
-
+#rotation of scores and loadings for demo purposes only 
   
   #adapted from https://stackoverflow.com/questions/1897704/angle-between-two-vectors-in-r
   angle <- function(x,y){
@@ -702,7 +375,6 @@ scores_r_baits <- cbind.data.frame(scores_r_baits, meta)
 yloadings <- t(apply(yloadings,1,rotate, y = rot.mat2))
 
 
-# loadings_r_baits <- rbind(loadings_r_baits, yloadings)
 
 ```
 
@@ -712,7 +384,7 @@ line <- colMeans(yloadings)
 LINE <- rbind(line, c(0,0))
 LINE <- t(LINE)
 colnames(LINE) <- c("to","from")
-# scores <- scores %*% 
+
 scores <- cbind.data.frame(scores,meta[,1:2])
 
 a <- ggplot(scores_r_baits, aes(x = Comp_1, y = Comp_2)) +
@@ -730,7 +402,7 @@ loadings_r_baits <- cbind.data.frame("ID" = rownames(loadings_r_baits), loadings
 ```{r}
 loadings_r_baits$ID[-which(loadings_r_baits$ID %in% c(baits,spikes))] <- "Other"
 
-loadings_r_baits$ID[which(loadings_r_baits$ID %in% spikes)] <- "Pathway"
+loadings_r_baits$ID[which(loadings_r_baits$ID %in% spikes)] <- "Spikes"
 loadings_r_baits$ID[which(loadings_r_baits$ID %in% baits)] <- "Baits"
 ```
 
@@ -744,26 +416,9 @@ b <- ggplot(loadings_r_baits, aes(x = Comp_1, y = Comp_2, colour = ID, shape = I
 
 
     scale_color_manual(values=c('#E69F00',"black", '#56B4E9'))+
-      geom_point(data = loadings_r_baits[which(loadings_r_baits$ID %in% c("Baits","Pathway")),], aes(size = 15)) +
-  # geom_point(data = yloadings, shape = 4, aes(x = Comp_1, y = Comp_2, size = 3 )) + 
+      geom_point(data = loadings_r_baits[which(loadings_r_baits$ID %in% c("Baits","Spikes")),], aes(size = 15)) +
   theme_bw()
 
 b
 ```
 
-```{r}
-
-#multiple PLS1 models with svd(baits) deflated
-
-
-```
-
-```{r}
-#remake simpls to deflate with target projected loadings 
-
-#first recreate simpls such that the output is the same as simpls.fit()
-
-#$projection -> T = XR
-
-
-```

@@ -24,7 +24,7 @@ library(caret)
 library(mixOmics)
 library(pracma)
 
-source("DATA_SIM_FUNCS_DEV.R")
+source("../DATA_SIM_FUNCS.R")
 
 Create_Core_DEV <- Create_Core_DEV_2
 
