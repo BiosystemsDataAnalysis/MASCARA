@@ -10,3 +10,4 @@ Some still to be added.
 
 After ensuring all necessary pacakges installed the R/Paper_markdown.Rmd file works to reproduce the manuscript and associated figures.
 
+The gtf file Oryza_sativa.IRGSP-1.0.50.gtf is required for annotation of Haider data. This can be obtained from: https://rapdb.dna.affrc.go.jp/download/irgsp1.html 
