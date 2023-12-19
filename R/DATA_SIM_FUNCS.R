@@ -1140,7 +1140,7 @@ qqplot <- function(data, meta, ...){
   
   df <- cbind.data.frame(meta,data)
   
-  df$time <- factor(df$time, levels = c(1:4))
+  df$time <- factor(df$time)#, levels = factor(df$time))
   df$growth_condition <- factor(df$growth_condition)
   
   
