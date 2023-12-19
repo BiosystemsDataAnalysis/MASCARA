@@ -147,7 +147,7 @@ a
 ```
 
 
-Figure \@ref(fig:nettype) outlines pathway nomenclature that will be used throughout this text. Panel *A* represents a true hypothetical pathway including a pathway of interest (POI), related pathway (RP) and an unrelated pathway (URP). All three types of pathway are assumed to be affected (dis-)proportionally by the experimental design. Note; URPs are not necessarily completely unlinked to POIs or RPs, in the biological sense, but are assumed here to be several degrees away. Far enough that the effect can be approximated orthogonally to the coexpression, when modelling. When dealing with experimentally designed data, we have to consider two key sources of variance: between-group variance and within-group variance. Between-group variance pertains to the differences between experimental groups (or conditions). This type of variance is of interest when conducting DE studies. Within-group variance, on the other hand, is the variance within experimental groups, this is not interesting for DE studies but may contain information useful to CoE. It is the excessive between-group variance that leads to the densely connected nature of *B* from \@ref(fig:nettype). Concretising this with a biological example; in @haiderTranscriptomeAnalysisPhosphate2023 a phosphate (P) starvation was applied to rice plants to induce strigolactone (SL) biosynthesis, to study the change in gene expression in comparison to control plants with normal supplies of P. The SL pathway is known to be triggered through P deficiency. However, as P is one of three key nutrients for plant growth, deficiency of this nutrient causes widespread differential expression throughout the transcriptome (@wangRoleStrigolactonesDeficiency2021).
+Figure \@ref(fig:nettype) outlines pathway nomenclature that will be used throughout this text. Panel *A* represents a true hypothetical pathway including a pathway of interest (POI), related pathway (RP) and an unrelated pathway (URP). All three types of pathway are assumed to be affected (dis-)proportionally by the experimental design. URPs defined to be pathways not directly interacting with the POI. When dealing with experimentally designed data, we have to consider two key sources of variance: between-group variance and within-group variance. Between-group variance pertains to the differences between experimental groups (or conditions). This type of variance is of interest when conducting DE studies. Within-group variance, on the other hand, is the variance within experimental groups, this is not interesting for DE studies but may contain information useful to CoE. It is the excessive between-group variance that leads to the densely connected nature of panel *B* from \@ref(fig:nettype). Concretising this with a biological example; in @haiderTranscriptomeAnalysisPhosphate2023 a phosphate (P) starvation was applied to rice plants to induce strigolactone (SL) biosynthesis, to study the change in gene expression in comparison to control plants with normal supplies of P. The SL pathway is known to be triggered through P deficiency. However, as P is one of three key nutrients for plant growth, deficiency of this nutrient causes widespread differential expression throughout the transcriptome (@wangRoleStrigolactonesDeficiency2021).
 
 Figure \@ref(fig:withinbetween) exemplifies between-group and within-group driven correlations from a real dataset (@haiderTranscriptomeAnalysisPhosphate2023). The plots show the relationship between two genes of the POI (*A* and *C*) and the relationship between two genes that are not part of the same pathway (*B* and *D*). The total correlations in both *A* and *B* are high but correlation in *B* is driven by the between-group variation and not by correlations within experimental groups. The within-group correlation is lower than the total in both cases, but there is a clear trend in *C*: P- condition in red. The within group correlation (r) is higher for the first transcript pair (*C*) than the second (*D*), which makes it possible to discern between genes within a POI or RP and genes that both respond similarly to a treatment (URP). Hence, we need to distinguish *total CoE* which is calculated on the total variance and *within-group CoE* where the focus is on the shared variance within experimental groups. 
 
@@ -403,9 +403,7 @@ ref$Effect <- factor(ref$Effect, levels = c("Low PC1", "Medium PC1", "High PC1",
 
 ### Ranked correlations
 
-Pearson's correlation coefficient *r* is calculated between all columns of \(\bm{Y}\). Ranks are assigned to all non-bait transcripts for each bait based on *r*, with the lowest rank for the highest correlation. These ranks are averaged across all baits.
-
-<!-- (see supplementary equation \@ref(eq:rankcor)). -->
+Pearson's correlation coefficient *r* is calculated between all columns of \(\bm{Y}\). Ranks are assigned to all non-bait transcripts for each bait based on *r*, with the lowest rank for the highest correlation. These ranks are averaged across all baits (see supplementary equation \@ref(eq:rankcor)).
 
 <!-- For example the correlation between a SL gene $j_{sl}$ and a non-SL gene $j_q$ is calculated as: -->
 
@@ -566,7 +564,7 @@ The genes are ranked based on target projection (@kvalheimInterpretationPartialL
 
 ## Performance evaluation; Log2 geometric mean rank
 
-To evaluate performance we use log2 geometric mean rank (GMR; $\bar{\gamma}$), defined as: 
+To evaluate performance we use log2 geometric mean rank (log2(GMR); $\bar{\gamma}$), defined as: 
 
 \begin{equation}
 \begin{aligned}
@@ -743,6 +741,7 @@ for(i in 1:length(methods))
   ylab("Effect Size") + 
   xlab("Num. DEs") +
   theme_bw() +
+  labs(fill = "log2(GMR)") +
   theme(plot.title = element_text(size=8)) 
 ```
 
@@ -751,7 +750,7 @@ for(i in 1:length(methods))
 
 For this simulation we have some experimental variance for the combined effect and time ($\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T$ and $\bm{T}_{\beta}\bm{P}_{\beta}^T$ respectively) a fixed amount of random noise \(\bm{E}\) and a fixed amount of structured residual variance $\bm{T}_S\bm{P}_{S}^T$, within which our 4 baits and 12 spikes share a correlation structure. This reflects the situation expected from the real data example - drastic effect caused by nutrient deficiency, which also activates the SL pathway. The POI/RP genes are expected to share some variance that is independent to the experiment - the 4 baits and 12 spikes load on to the structured part of the noise $\bm{T}_S\bm{P}_{S}^T$.
 
-```{r tc, echo = F, fig.cap= "Results of simulation 1 for all 4 methods. Log2 geometric mean rank (GMR) as a function of the number of differentially expressed URP genes (x-axis) and combined effect size (y axis); ($CE = \\|\\mathbf{T}_{\\alpha + \\alpha\\beta}\\mathbf{P}_{\\alpha + \\alpha\\beta}^T\\|_F$), lower GMR; dark blue, indicates better performance. ASCA model calculated per equation \\@ref(eq:ascamodel), PLS model per equation \\@ref(eq:plsmodel)."}
+```{r tc, echo = F, fig.cap= "Results of simulation 1 for all 4 methods. Log2 geometric mean rank (log2(GMR)) as a function of the number of differentially expressed URP genes (x-axis) and combined effect size (y axis); ($CE = \\|\\mathbf{T}_{\\alpha + \\alpha\\beta}\\mathbf{P}_{\\alpha + \\alpha\\beta}^T\\|_F$), lower log2(GMR); dark blue, indicates better performance. ASCA model calculated per equation \\@ref(eq:ascamodel), PLS model per equation \\@ref(eq:plsmodel)."}
 wrap_plots(plots) + plot_layout(guides = "collect")
 
 ```
@@ -854,7 +853,7 @@ l <- 1
 One_Balance <- list()
 for(i in orders){
   
-  One_Balance[[i]] <- ggplot(mRES[which(mRES$nCERs == orders[i]),], aes(x = Replicate_Number, y = log2(F1_Score), colour = Method)) +
+  One_Balance[[i]] <- ggplot(mRES[which(mRES$nCERs == orders[i]),], aes(x = Replicate_Number, y = log2(F1_Score), colour = Method, shape = Method)) +
   scale_color_viridis(discrete = T)+
     stat_summary() +
     ylim(0,max ) +
@@ -883,9 +882,9 @@ test_patch <- (One_Balance[[1]] + One_Balance[[2]] + One_Balance[[3]]  + ylab(NU
 #   One_Balance[[3]] + plot_layout(guides = "collect")
 
 
-# ps1 <- grid.arrange(ps, left = "Log2(GMR)", bottom = "Replicate Number                     ")
+ps1 <- grid.arrange(ps, left = "log2(GMR)", bottom = "Replicate Number                     ")
 
-a <- knitr::include_graphics("C:/Users/fwhite/Documents/replication_res.png")
+a <- knitr::include_graphics("replication_res.png")
 a
 
 
@@ -1713,17 +1712,18 @@ ggplot(mRES, aes(x = Method, y = RP)) +
 
 ```
 
+## Ranked correlations
+Ranked correlations are calculated as:
 
-<!-- Ranked correlations are calculated from the correlation matrix $\mathbf{C} as: -->
+\begin{equation}
+\begin{aligned}
+Rank_{\tilde{J}} = \frac{\sum_{b=1}^{B}rank_{b\tilde{j}}}{B}  
+\end{aligned}(\#eq:rankcor)
+\end{equation}
 
-<!-- \begin{equation} -->
-<!-- \begin{aligned} -->
-<!-- RANKS  -->
-<!-- \end{aligned}(\#eq:rankcor) -->
-<!-- \end{equation} -->
+Where *B* is the number of baits and $rank_{b\tilde{j}}$ is the ranked Pearson correlation coefficient between gene j and bait b in the context of $\tilde{J}$ non-bait genes.
 
-
-
+## Fisher transformed Pearson correlation coefficient
 To calculate Fisher transformed Pearson correlations (z) with Pearson's r:
 
 \begin{equation}
@@ -1733,7 +1733,7 @@ z = \frac{1}{2}ln(\frac{1 + r}{1-r})
 \end{equation}
 
 
-<!--   r_{j_{sl}j_{q}} = \frac{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl}) (y_{ij_{q}} - \bar{y}_j_{q})}{\sqrt{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl})^2 \sum_{i=1}^{I} (y_{ij_{q}} - \bar{y}_j_{q})^2}} -->
+<!-- $r_{j_{sl}j_{q}} = \frac{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl}) (y_{ij_{q}} - \bar{y}_j_{q})}{\sqrt{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl})^2 \sum_{i=1}^{I} (y_{ij_{q}} - \bar{y}_j_{q})^2}}$ -->
 
 
 <!-- MASCARA example run on $params: -->
