@@ -3,24 +3,13 @@ title: "MASCARA: coexpression analysis in data from designed experiments"
 author: "Fred T.G. White, Anna Heintz-Buschart, Lemeng Dong, Harro J. Bouwmeester, Johan A. Westerhuis, Age K. Smilde"
 date: '`r format(Sys.time(), "%d %B, %Y")`'
 output: 
-  # powerpoint_presentation
-  # ## keep_tex: true
-  # bookdown::pdf_document2:
     bookdown::word_document2:
       number_sections: false
       toc: false
       classoption:
         twocolumn
- # # html_document:
-#  #   toc: true
-#  #   theme: united
-#  #   toc_depth: 3
-#  #   number_sections: true
 # bibliography: MASCARA_refs.json
 bibliography: "`r rbbt::bbt_write_bib('MASCARA_refs.json', overwrite = TRUE)`"
-# csl: oxford-scimed.csl
-#https://raw.githubusercontent.com/citation-style-language/styles/master/apa-6th-edition.csl
-# csl: https://raw.githubusercontent.com/citation-style-language/styles/master/apa-6th-edition.csl
 csl: vancouver.csl
 keep_md: true
 link-citations: yes
@@ -34,21 +23,20 @@ header-includes:
        \let\Begin\begin
           \let\End\end
           }
-  
+          
 ---
-
 
 
 ```{r setup, include=FALSE}
 library(knitr)
-# library(here)
 knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, root.dir=here()
-#pdf_document
-#powerpoint_presentation
 
-# author: Fred T.G. White^[1,2], Anna Heintz-Buschart^[1], Lemeng Dong^[2], Harro J. Bouwmeester^[2], Johan A. Westerhuis^[1], Age K. Smilde^[1]
 
-# author: "Fred T.G. White, Anna Heintz-Buschart, Lemeng Dong, Harro J. Bouwmeester, Johan A. Westerhuis, Age K. Smilde"
+if(!"renv" %in% installed.packages()[,1]){
+  install.packages("renv")
+}
+
+renv::restore()
 
 
 # Fred T.G. White^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands, Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands *], Anna Heintz-Buschart^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Lemeng Dong^[Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Harro J. Bouwmeester^[Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Johan A. Westerhuis^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Age K. Smilde^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands]
@@ -125,7 +113,7 @@ library(ggbreak)
 
 # Abstract
 
-Experiments in plant transcriptomics are usually designed to induce variation in a pathway of interest (POI). Harsh experimental conditions can cause widespread transcriptional changes between groups. Discovering coexpression within a POI (here strigolactones) in this context is hampered by the dominant variance induced by the design. Minor changes in experimental conditions not controlled for may affect the plants, leading to small coordinated differences in genes within POIs and related pathways (RPs) between replicate plants in the same controlled experimental condition. These systematic differences between replicates within the same experimental conditions can be used to detect genes from the same POI or RPs. We introduce a novel framework “MASCARA” which combines ANOVA simultaneous component analysis and partial least squares to remove the experimentally induced variance and investigate multivariate relationships in the non-designed variance. MASCARA is tested against a selection of competitors on simulated data, created to mimic a designed transcriptome study. In a coexpression analysis of a real dataset MASCARA detects several uncharacterised but relevant transcripts. Our results indicate that there is sufficient structure left in a typical dataset after correcting for experimental variance and that this residual information is useful to investigate coexpression. 
+Experiments in plant transcriptomics are usually designed to induce variation in a pathway of interest (POI). Harsh experimental conditions can cause widespread transcriptional changes between groups. Discovering coexpression within a POI (here the strigolactone pathway) in this context is hampered by the dominant variance induced by the design. Minor changes in experimental conditions not controlled for may affect the plants, leading to small coordinated differences in genes within POIs and related pathways (RPs) between replicate plants in the same controlled experimental condition. These systematic differences between replicates within the same experimental conditions can be used to detect genes from the same POI or RPs. We introduce a novel framework “MASCARA” which combines ANOVA simultaneous component analysis and partial least squares to remove the experimentally induced variance and investigate multivariate relationships in the non-designed variance. MASCARA is tested against a selection of competitors on simulated data, created to mimic a designed transcriptome study. In a coexpression analysis of a real dataset MASCARA detects several uncharacterised but relevant transcripts. Our results indicate that there is sufficient structure left in a typical dataset after correcting for experimental variance and that this residual information is useful to investigate coexpression. 
 
 <!-- \twocolumn -->
 
@@ -134,7 +122,7 @@ Experiments in plant transcriptomics are usually designed to induce variation in
 
 
 # Introduction
-Plant transcriptome studies typically involve the use of designed experiments which aim to induce variation in pathways of interest (POIs) by controlling one or more experimental factors. This can be done through, for example, varying the level of certain essential nutrients, knocking out/down a gene within a POI. To explore which pathways are affected by the intervention, gene expression can be measured through RNA sequencing (RNAseq). Analysis of RNAseq data generally adheres to one of two approaches: differential expression analysis (DE; @andersDifferentialExpressionAnalysis2010; @robinsonEdgeRBioconductorPackage2010) or coexpression analysis (CoE; @langfelderWGCNAPackageWeighted2008; @tzfadiaCoExpNetVizComparativeCoExpression2016). DE is used to determine which genes are expressed differently between two or more experimental conditions, highlighting known or novel pathways affected by the experimental conditions. CoE, on the other hand, aims at discovering genes that are part of a partially characterized POI. Here, the expression profiles of known genes of the POI (termed "baits") are used to detect novel pathway members with similar expression patterns (here termed "spikes"). 
+Plant transcriptome studies typically involve the use of designed experiments which aim to induce variation in pathways of interest (POIs) by controlling one or more experimental factors. This can be done through, for example, varying the level of certain essential nutrients, knocking out/down a gene within a POI. To explore which pathways are affected by the intervention, gene expression can be measured through RNA sequencing (RNAseq). Analysis of RNAseq data generally adheres to one of two approaches: differential expression analysis (DE; @andersDifferentialExpressionAnalysis2010; @robinsonEdgeRBioconductorPackage2010) or coexpression analysis (CoE; @langfelderWGCNAPackageWeighted2008; @tzfadiaCoExpNetVizComparativeCoExpression2016). DE is used to determine which genes are expressed differently between two or more experimental conditions, highlighting known or novel pathways affected by the experimental conditions. CoE, on the other hand, aims at discovering genes that are part of an already partially characterized POI. Here, the expression profiles of known genes of the POI (termed "baits") are used to detect novel pathway members with similar expression patterns (here termed "spikes"). 
 
 <!-- For the rest of the manuscript we take the strigolactones as our example biological pathway. -->
 
@@ -147,15 +135,14 @@ a
 ```
 
 
-Figure \@ref(fig:nettype) outlines pathway nomenclature that will be used throughout this text. Panel *A* represents a true hypothetical pathway including a pathway of interest (POI), related pathway (RP) and an unrelated pathway (URP). All three types of pathway are assumed to be affected (dis-)proportionally by the experimental design. URPs defined to be pathways not directly interacting with the POI. When dealing with experimentally designed data, we have to consider two key sources of variance: between-group variance and within-group variance. Between-group variance pertains to the differences between experimental groups (or conditions). This type of variance is of interest when conducting DE studies. Within-group variance, on the other hand, is the variance within experimental groups, this is not interesting for DE studies but may contain information useful to CoE. It is the excessive between-group variance that leads to the densely connected nature of panel *B* from \@ref(fig:nettype). Concretising this with a biological example; in @haiderTranscriptomeAnalysisPhosphate2023 a phosphate (P) starvation was applied to rice plants to induce strigolactone (SL) biosynthesis, to study the change in gene expression in comparison to control plants with normal supplies of P. The SL pathway is known to be triggered through P deficiency. However, as P is one of three key nutrients for plant growth, deficiency of this nutrient causes widespread differential expression throughout the transcriptome (@wangRoleStrigolactonesDeficiency2021).
+Figure \@ref(fig:nettype) outlines pathway nomenclature that will be used throughout this text. Panel *A* represents a true hypothetical pathway including a pathway of interest (POI), related pathway (RP) and an unrelated pathway (URP). All three types of pathway are assumed to be affected by the experimental design. URPs are defined to be pathways not directly interacting with the POI. When dealing with experimentally designed data, we have to consider two key sources of variance: between-group variance and within-group variance. Between-group variance pertains to the differences between experimental groups (or conditions). This type of variance is of interest when conducting DE studies. Within-group variance, on the other hand, is the variance within experimental groups, this is not interesting for DE studies but may contain information useful to CoE. It is the excessive between-group variance that leads to the densely connected nature of panel *B* from \@ref(fig:nettype). Concretising this with a biological example; in @haiderTranscriptomeAnalysisPhosphate2023 a phosphate (P) starvation was applied to rice plants to induce strigolactone (SL) biosynthesis, to study the change in gene expression in comparison to control plants with normal supplies of P. The SL pathway is known to be triggered through P deficiency. However, as P is one of three key nutrients for plant growth, deficiency of this nutrient causes widespread differential expression throughout the transcriptome (@wangRoleStrigolactonesDeficiency2021).
 
 Figure \@ref(fig:withinbetween) exemplifies between-group and within-group driven correlations from a real dataset (@haiderTranscriptomeAnalysisPhosphate2023). The plots show the relationship between two genes of the POI (*A* and *C*) and the relationship between two genes that are not part of the same pathway (*B* and *D*). The total correlations in both *A* and *B* are high but correlation in *B* is driven by the between-group variation and not by correlations within experimental groups. The within-group correlation is lower than the total in both cases, but there is a clear trend in *C*: P- condition in red. The within group correlation (r) is higher for the first transcript pair (*C*) than the second (*D*), which makes it possible to discern between genes within a POI or RP and genes that both respond similarly to a treatment (URP). Hence, we need to distinguish *total CoE* which is calculated on the total variance and *within-group CoE* where the focus is on the shared variance within experimental groups. 
 
-From a plant biology point of view, the between-group and the within-group variance can be quite different. However, both may contain valuable biological information. The between-group variance is in principle larger because groups are the result of treatments that are usually selected because they affect the POI. Within-group variance (variance across replicates), if too large, can be an issue in DE analysis, we argue that in co-expression analysis the information present in this variance can be valuable. Variance between replicates is caused by non-controlled variations in plant development and environmental conditions. One replicate within a group may be slightly bigger than the others and therefore respond slightly different to a treatment. This could results in slight differences in bait genes between the replicates, but also the genes that we want to identify with a co-expression analysis. There may be many other factors that are inducing this within-group variance, but it is quite likely that if a factor induces a change in the treatment response in one replicate, that this response difference occurs throughout the entire process or pathway in that one replicate. This means that the within-group variance likely contains valuable information and by averaging out this variance, as is done in differential expression analysis, we are losing information.
+From a plant biology point of view, the between-group and the within-group variance can be quite different. However, both may contain valuable biological information. The between-group variance is in principle larger because groups are the result of treatments that are usually selected because they affect the POI. Within-group variance (variance across replicates), if too large, can be an issue in DE analysis, we argue that in co-expression analysis the information present in this variance can be valuable. Variance between replicates is caused by non-controlled variations in plant development and environmental conditions. One replicate plant within a group may be slightly bigger than the others and therefore respond slightly different to a treatment. This could result in slight differences in bait genes between the replicates, but also the genes that we want to identify with a co-expression analysis. There may be many other factors that are inducing this within-group variance, but it is quite likely that if a factor induces a change in the treatment response in one replicate, that this response difference occurs throughout the entire process or pathway in that one replicate. This means that the within-group variance likely contains valuable information and by averaging out this variance, as is done in differential expression analysis, we are losing information.
 
-Considering this within-group variance increases the strength of coexpression analysis, for example, in experiments where the intervention causes large between-group differences in many genes. Not making the distinction between types of variance results in *total CoE* associations driven by the differences between treatment groups as opposed to within group correlations. @haiderTranscriptomeAnalysisPhosphate2023 used ranked Pearson correlations to determine (total) coexpression candidates. Due to such a strong effect of the experiment, many genes were affected on top of the desired SL genes. This masked the within-group correlation between the baits and the spikes (remaining unknown SL genes). This problematic issue was also highlighted recently by @saccentiWhatCanGo2023 where group sampling assumptions are investigated. Hence, both from a data analysis as well as from a biological perspective it is relevant to make a distinction between the different types of CoE. The focus of this paper will be on developing methods to investigate within-group CoE.
+Considering the within-group variance increases the strength of coexpression analysis, for example, in experiments where the intervention causes large between-group differences in many genes. Not making the distinction between types of variance results in *total CoE* associations driven by the differences between treatment groups as opposed to within group correlations. @haiderTranscriptomeAnalysisPhosphate2023 used ranked Pearson correlations to determine (total) coexpression candidates. Due to such a strong effect of the experiment, many genes were affected on top of the desired SL genes. This masked the within-group correlation between the baits and the spikes (remaining unknown SL genes). This problematic issue was also highlighted recently by @saccentiWhatCanGo2023 where group sampling assumptions are investigated. Hence, both from a data analysis as well as from a biological perspective it is relevant to make a distinction between the different types of CoE. The focus of this paper will be on developing methods to investigate within-group CoE.
 
-<!-- , similar to MutRank (@poretskyMutRankShinyWebapplication2020), -->
 
 ```{r withinbetween, fig.cap= c("Correlation examples, Pearson’s correlation coefficient (r) indicated in facet titles. Data from @haiderTranscriptomeAnalysisPhosphate2023. X axes, expression levels of MAX1 gene (Os01t0700900–01) in rice, Y axes expression levels of example coexpression candidates, aribitrary units. Top row A-B; *total CoE*, bottom row C-D *within-group CoE* from variance partitioning the data in A-B. Gene pairs in both A and B have strong total correlations. Correlation in A is also exhibited within a group, B has strong total correlations mainly due to the differences between groups. These examples are indistinguishable from eachother without variance partitioning.")}
 
@@ -164,11 +151,11 @@ a
 
 ```
 
-For a successful coexpression analysis it is necessary to have a predefined set of baits that are already known to be involved in the mechanism under study. Methods like ranked correlations and partial least squares regression (PLS; @geladiPartialLeastsquaresRegression1986; @woldCollinearityProblemLinear1984) are able to investigate relationships between a set of baits and the other measured genes. In ranked correlations the relationships are quantified at a bivariate level. In PLS regression the relationships can be investigated in a multivariate way, in its simplest form we can see which genes are most predictive of the expression of one bait. This can be extended to a PLS2 model where relationships are investigated between a set of multiple baits and all other genes. These methods do not by default account for the different variance types discussed above. Hence, they are not directly suitable for within-group CoE. 
+For a successful coexpression analysis it is necessary to have a predefined set of baits that are already known to be involved in the pathway under study. Methods like ranked correlations and partial least squares regression (PLS; @geladiPartialLeastsquaresRegression1986; @woldCollinearityProblemLinear1984) are able to investigate relationships between a set of baits and the other measured genes. In ranked correlations the relationships are quantified at a bivariate level. In PLS regression the relationships can be investigated in a multivariate way, in its simplest form we can see which genes are most predictive of the expression of one bait. This can be extended to a PLS2 model where relationships are investigated between a set of multiple baits and all other genes. These methods do not by default account for the different variance types discussed above. Hence, they are not directly suitable for within-group CoE. 
 
-The most widely known and applied method that investigates variance sources is the analysis of variance (ANOVA; @searleLinearModels1971). ANOVA simultaneous component analysis (ASCA; @smildeANOVAsimultaneousComponentAnalysis2005) and its extension to imbalanced data via the generalised linear model (ASCA+; @thielASCAAPCAExtensions2017) have been developed to combine principal component analysis (PCA) with ANOVA and can therefore account for experimental design in dimensionality reduction. ASCA is of interest due to the variance partitioning, this is typically used to estimate the effect matrices that are calculated from the design and particularly the within-group variance structure which is maintained in the residuals of the model. Both PLS and ASCA have been used for DE (@augerGeneCoexpressionNetwork2022, @renRNABindingProteins2023, @nuedaDiscoveringGeneExpression2007, @jarmundALASCAPackageLongitudinal2022) and CoE (@guanSRGSSparsePartial2022, @nuedaFunctionalAssessmentTime2009). ASCA and PLS have been combined before in @thissenImprovingAnalysisDesigned2009 creating ANOVA-PLS, however the goal of their study was not coexpression analysis. Neither of these methods are optimal by themselves for CoE in the context of large between group variance with known baits. 
+The most widely known and applied method that investigates variance sources is the analysis of variance (ANOVA; @searleLinearModels1971). ANOVA simultaneous component analysis (ASCA; @smildeANOVAsimultaneousComponentAnalysis2005) and its extension to imbalanced data via the generalised linear model (ASCA+; @thielASCAAPCAExtensions2017) have been developed to combine principal component analysis (PCA) with ANOVA and can therefore account for experimental design in dimension reduction. ASCA is of interest due to the variance partitioning. This is typically used to estimate the effect matrices that are calculated from the design and particularly the within-group variance structure which is maintained in the residuals of the model. Both PLS and ASCA have been used for DE (@augerGeneCoexpressionNetwork2022, @renRNABindingProteins2023, @nuedaDiscoveringGeneExpression2007, @jarmundALASCAPackageLongitudinal2022) and CoE (@guanSRGSSparsePartial2022, @nuedaFunctionalAssessmentTime2009). ASCA and PLS have been combined before in @thissenImprovingAnalysisDesigned2009 creating ANOVA-PLS, however the goal of their study was not coexpression analysis. Neither of these methods are optimal by themselves for CoE in the context of large between group variance with known baits. 
 
-The baits are assumed to be part of the same POI and the remaining uncharacterised spikes (POI or RP genes) are assumed to be numerous. Therefore, both the baits and the remainder of the data could be reduced to linear combinations in order to investigate relationships between a set of baits and putative spikes. We introduce a new data analysis method called multivariate ASCA residual analysis (MASCARA). MASCARA is motivated by four key factors; (1) the presence of dominant between-group variance caused by the setup of the experiment, as well as, (2) ambient variance (structured effects caused by undocumented environmental factors i.e. temperature, light intensity or soil water content) within the replicates of each experimental group, (3) the need to investigate multivariate relationships and (4) the low number of samples. The method capitalises on ASCA to account for an experimental design and the multivariate analysis capability of PLS2 to find uncharacterised POI genes using a set of baits. Instead of focusing on the variance induced by the experimental design, as is a typical use of ASCA, this variance is removed, and the remaining variance is further analysed to investigate the multivariate relationships between baits and the putative spikes in terms of within-group CoE. 
+The baits are assumed to be part of the same POI and the remaining uncharacterised spikes (POI or RP genes) are assumed to be numerous. Therefore, both the baits and the remainder of the data could be reduced to linear combinations in order to investigate relationships between a set of baits and putative spikes. We introduce a new data analysis method called multivariate ASCA residual analysis (MASCARA). MASCARA is motivated by four key factors; (1) the presence of dominant between-group variance caused by the setup of the experiment, as well as, (2) ambient variance (structured effects caused by undocumented environmental factors i.e. temperature, light intensity or soil water content) within the replicates of each experimental group, (3) the need to investigate multivariate relationships and (4) the low number of samples. The method capitalises on ASCA to account for an experimental design and the multivariate analysis capability of PLS2 to find uncharacterised POI genes using a set of baits. Instead of focusing on the variance induced by the experimental design, as is a typical use of ASCA, this variance is removed, and the remaining residual variance is further analysed to investigate the multivariate relationships between baits and the putative spikes in terms of within-group CoE. 
 
 
 To explore the utility of MASCARA, the method will be compared to ASCA, PLS2 and correlation analysis illustrated using an example RNAseq dataset (from @haiderTranscriptomeAnalysisPhosphate2023). Furthermore, this dataset is used as a guide to several simulation studies to validate the development of a novel approach to coexpression analysis. For these simulations we emulate both different levels of between- and within-group variance. We test the effects of size of between group differences, number of URP differential genes, measurement noise (random unstructured technical variance), structured ambient variance and number of replicates. The following sections seek to investigate which statistical methods are best suited for POI elucidation when a set of baits is already known and illustrate the benefit of MASCARA. Especially in data coming from experiments designed for differential expression analysis.
@@ -248,7 +235,7 @@ levels(rdo[[2]]$data$time) <- c("1","3","7","8")
 
 ## RNAseq - Rice strigolactone dataset @haiderTranscriptomeAnalysisPhosphate2023
 
-In order to guide the simulations we illustrate the desired characteristics with a real dataset. The real data are a subset of samples from a study in which the root transcriptome of rice plants is measured under two  growth condition (P+/P-) and measured at four time points (1, 3, 7 and 8  days post treatment). At each combination of growth condition and time point, the root transcriptome of three new plants was harvested for RNA sequencing. In this dataset, the curated list of SL pathway genes (contained in Supplementary Table 1)  show a specific profile: low variance baseline expression across all time points in the P+ condition but activation and increasing expression over time with P starvation, data were generated and preprocessed to variance stabilised counts as per @haiderTranscriptomeAnalysisPhosphate2023. 
+In order to guide the simulations we illustrate the desired characteristics with a real dataset. The real data are a subset of samples from a study in which the root transcriptome of rice plants is measured under two  growth condition (P+/P-) and measured at four time points (1, 3, 7 and 8  days post treatment). At each combination of growth condition and time point, the root transcriptome of three new plants was harvested for RNA sequencing. In this dataset, the curated list of SL pathway genes (contained in Supplementary Table 1)  shows a specific profile: low variance baseline expression across all time points in the P+ condition but activation and increasing expression over time with P starvation, data were generated and preprocessed to variance stabilised counts as per @haiderTranscriptomeAnalysisPhosphate2023. 
 
 Figure \@ref(fig:Dataset1-Overview) shows the gene expression levels of 9 strigolactone pathway genes along with 9 highly differential genes that are induced by P deficiency, but are not part of the SL pathway. While the expression is low in P+ condition a clear increasing time profile can be observed in the P- condition, indicating an interaction between the growth condition and the time factors.
 
@@ -286,13 +273,50 @@ knitr::include_graphics("rice_s_l.png")
 
 The problem in the real dataset is that the nutrient stress applied causes a major effect on many other genes besides our baits and spikes. This widespread transcriptional regulation can mask the coexpression patterns of interest due to the large number of genes that are upregulated under the stress condition, making it more difficult to detect genes that are responding to a lesser extent, for example the SL pathway. 
 
-The simulations are built upon the results of the ASCA analysis of the combined effect of growth condition and the interaction of growth condition and time (see Figure \@ref(fig:ASCA-1) for overview). The simulated data is created by simulating score and loading values (as in Figure \@ref(fig:simOverview)) for the combined effect ($\alpha + \alpha\beta$) ) explaining the difference in time profiles of the P+ and P- condition and the main time effect $\beta$, as well as, structured ambient variance ($S$). This is to mimic variance due to gene expression as a function of growth condition and time as well as variance due to coexpression of genes in the same  pathway on top of this experimentally induced DE variance.
+The simulations are built upon the results of the ASCA analysis of the combined effect of growth condition and the interaction of growth condition (g_c) and time. As can be seen in Figure \@ref(fig:ASCA-1) there is clear separation between samples due to the experimental factors growth condition (g_c) and time. The variation between the replicates is only small. The green loadings of URP genes are strongly related to the experimental variation due to g_c. The simulated data is created by simulating experimental variation consisting of the main time effect $beta$ and the combined effect ($\alpha + \alpha\beta$), and the Ambient/Residual variation which exists of the structured ambient variance ($S$) and residual variation ($E$) representing measurement error, modeled with normally distributed random values $e_{ij} = \mathcal{N}(0,\sigma^2)$.
+
+Each of the sources of variation except the residual variation is simulated as low dimensional variation created from 2 scores ($\mathbf{T}$) and loadings ($\mathbf{P}$). For the experimental variation, the scores matrices $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{T}_{\beta}$ each consist of two orthogonal score vectors and their relative levels are indicated by the colour. The different colours in Figure \@ref(fig:simOverview) represent that the scores are orthogonal to each other. Each small block consists of the same score value for each of the replicates within that condition. For the Ambient variation, the scores $\mathbf{T}_{S}$ are different for each replicate plant. The values in $\mathbf{T}_{S}$ are obtained from a normal distribution with mean 0 and variance 1, i.e. $\mathbf{T}_{S_{ik}} \sim \mathcal{N}(0,1)$. The $\mathbf{T}$ matrices represent the simulated scores for their respective factors. For blues, reds, greys and golds we have 4 different shades representing 4 unique values per factor level (total 8 unique values where reds and golds are sign flipped blues and greys respectively). Similarly oranges and pinks represent a growth condition independent time profile with four unique values.
+
+In the loading matrices $\mathbf{P}$, the different coloured blocks indicate different types of genes. The green block represents the bait genes of POI. The black genes represent “unknown” genes from POI or RP. Yellow and purple represent genes from URP that are affected by the experimental variation in different ways. The grey blocks represent very small background variation for those genes, while the white blocks represent that those genes are not affected by that source of background variation. 
+
+In $\mathbf{P}_{\beta 1}^T$ the baits, spikes and other DE genes (all genes from POI, RP and URP) along with the remaining first half have similar positive values (represented by light grey) where the other 1000 have positive values in $\mathbf{P}_{\beta 2}^T$ (grey), these are created to emulate the reality of the real data in which many genes are slightly correlated with eachother through the course of development, as well as to account for some nonlinearities which are otherwise ignored by our model. The remaining elements of $\mathbf{P}_{\alpha + \alpha \beta}^T$ and $\mathbf{P}_{\beta}^T$ are populated with zeroes. $\mathbf{P}_S$ only has values for the baits (green) and spike (black) genes. The loading values for the baits and spikes are obtained as $p_{S_jk}^{baits,spikes} \sim \mathcal{N}(0.5,0.2)$, while the loadings for the other genes are 0. 
+
+To finalise, the response values all have an intercept $\mathbf{1}\mu_{j}^T$. Similarly to the real data, the gene expression values for each experimental condition are simulated with three independent replicates per time-condition-combination. Each simulated data Y set thus consists of 24 samples and 2000 genes.
+
+```{r simOverview, echo=FALSE, fig.cap="Coexpression simulation, simplified overview. Colours correspond to the same genes in the different loading vectors (*P*). Black; baits (known POI genes), green; spikes (unknown POI genes), yellow; DE URP genes, purple DE URP genes with a different profile. In the score vectors (T); Blues, reds, greys and golds represent experimental conditions, oranges and pinks; time. Each of the textures in the ambient/residual part represent a distinct normally distributed set of random values.", out.width = '100%'}
+knitr::include_graphics("Sim_SL_diagram_simplified.png")
+```
+
+
+<!-- The simulated data is created by simulating score and loading values (as in Figure \@ref(fig:simOverview)) for the combined effect ($\alpha + \alpha\beta$) ) explaining the difference in time profiles of the P+ and P- condition and the main time effect $\beta$, as well as, structured ambient variance ($S$). This is to mimic variance due to gene expression as a function of growth condition and time as well as variance due to coexpression of genes in the same  pathway on top of this experimentally induced DE variance. -->
 
 ## Data simulation 1: Combined effect size and number of differential genes
 
-The first simulation aims to determine how well the methods perform to find coexpressed genes in the presence of a dominant between-group variance structure and increasing numbers of differential URP genes (genes with high between-group correlation but no within-group correlation). The expression levels of differential transcripts is modeled with the scores and loadings of the growth condition and its interaction with time; termed here the combined effect ( $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{P}_{\alpha + \alpha\beta}^T$ ). The time effect is modeled with scores and loadings ( $\mathbf{T}_{\beta}$  and $\mathbf{P}_{\beta}^T$ ). Also included is some random measurement noise, this is modeled as a matrix $\mathbf{E}$ with normally distributed random values $e_{ij} = \mathcal{N}(0,\sigma^2)$. 
+The first simulation aims to determine how well the methods perform to find coexpressed genes in the presence of a dominant between-group variance structure and increasing numbers of differential URP genes (represented by the yellow block in Figure \@ref(fig:simOverview)) that only have high between-group variance but no within-group variance.
 
-On top of the between-group effect there is an additional correlation structure applied to the baits and spikes to create a model of coexpression that is independent to the variance induced by the experimental factors ($\mathbf{X}_S = \mathbf{T}_S\mathbf{P}_S^T$). This $\mathbf{X}_S$ matrix contains two component sources of variation which links the baits and spikes. In this simulation we have a set of 4 baits that have positive loadings for the combined effect along with a variable number of other genes - "Combined Effect Responders", which are the genes from a simulated URP (indicated by the yellow bar in Figure \@ref(fig:simOverview)). For the structured ambient variance; 2 random vectors in \(\bm{T}_S\) (each column representing an effect caused by ambient conditions) which our baits and spikes contribute to (i.e. green and black bars in Figure \@ref(fig:simOverview) are non zero in \(\bm{P}_S\)). Similarly to the real data, the gene expression values for each experimental condition are simulated with three independent replicates per time-condition-combination. Each simulated data $\mathbf{Y}$ set thus consists of 24 samples and 2000 genes.
+In this simulation we have a set of 4 baits, 12 spike genes and a variable number URP genes. The issue to address is the presence of many differential URPs; those that have strong between group correlations but no within group correlation. We incrementally increase the number of genes in the yellow block and decrease number of white genes with 0 loadings. As well as the number of DE URPs we also independently control the size of the experimental variance through the parameter *d* in Equation in \@ref(eq:nCER). This approach controls the size of the experimental variance as well as the number of genes responding while keeping a fixed amount of ambient or within group variation.
+
+\begin{equation}
+\begin{aligned}
+\bm{Y} &= \bm{1\mu}^T + d(\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T) + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + \bm{E} \\
+\end{aligned}(\#eq:nCER)
+\end{equation}
+
+
+<!-- \begin{equation} -->
+<!-- \begin{aligned} -->
+<!-- \bm{Y} &= \bm{1\mu}^T + \bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + \bm{E} \\ -->
+<!-- \text{where for each element}\\ -->
+<!-- &\bm{T}_{S_{ik}} \sim \mathcal{N}(0,1), \quad \bm{P}_{S_{jk}}^{\text{baits,spikes}} \sim \mathcal{N}(0.5,0.2) \\ -->
+<!-- \text{and:} &\\ -->
+<!-- \bm{P}_{S}^{\text{rest}} &= 0 -->
+<!-- \end{aligned}(\#eq:Sim2-bp) -->
+<!-- \end{equation} -->
+
+
+<!-- The expression levels of differential transcripts is modeled with the scores and loadings of the growth condition and its interaction with time; termed here the combined effect ( $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{P}_{\alpha + \alpha\beta}^T$ ). The time effect is modeled with scores and loadings ( $\mathbf{T}_{\beta}$  and $\mathbf{P}_{\beta}^T$ ). Also included is some random measurement noise, this is modeled as a matrix $\mathbf{E}$ with normally distributed random values $e_{ij} = \mathcal{N}(0,\sigma^2)$.  -->
+
+<!-- On top of the between-group effect there is an additional correlation structure applied to the baits and spikes to create a model of coexpression that is independent to the variance induced by the experimental factors ($\mathbf{X}_S = \mathbf{T}_S\mathbf{P}_S^T$). This $\mathbf{X}_S$ matrix contains two component sources of variation which links the baits and spikes. In this simulation we have a set of 4 baits that have positive loadings for the combined effect along with a variable number of other genes - "Combined Effect Responders", which are the genes from a simulated URP (indicated by the yellow bar in Figure \@ref(fig:simOverview)). For the structured ambient variance; 2 random vectors in \(\bm{T}_S\) (each column representing an effect caused by ambient conditions) which our baits and spikes contribute to (i.e. green and black bars in Figure \@ref(fig:simOverview) are non zero in \(\bm{P}_S\)). Similarly to the real data, the gene expression values for each experimental condition are simulated with three independent replicates per time-condition-combination. Each simulated data $\mathbf{Y}$ set thus consists of 24 samples and 2000 genes. -->
 
 
 
@@ -305,42 +329,25 @@ X_funced_test2 <- Create_Core(nreps = 3, meta, irr_spikes = TRUE, struc_resid = 
 
 
 
-The scores matrices $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{T}_{\beta}$ each consist of two orthogonal score vectors and their relative levels are indicated by the colour. The different colours in Figure \@ref(fig:simOverview) represent that the scores are orthogonal to each other. Each small block consists of the same score value for each of the replicates within that condition. Loadings $\mathbf{P}_{\alpha + \alpha\beta}^T$ and $\mathbf{P}_{\beta}^T$  are simulated to create the baits and spikes. As displayed in Figure \@ref(fig:simOverview), the green bar represents 4 baits (or known pathway genes), the black bar represents the 12 spikes (“unknown” genes from POI or RP), yellow represents differential URP genes, and purple; a set of differential URPs with an alternative treatment response. 
+<!-- The scores matrices $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{T}_{\beta}$ each consist of two orthogonal score vectors and their relative levels are indicated by the colour. The different colours in Figure \@ref(fig:simOverview) represent that the scores are orthogonal to each other. Each small block consists of the same score value for each of the replicates within that condition. Loadings $\mathbf{P}_{\alpha + \alpha\beta}^T$ and $\mathbf{P}_{\beta}^T$  are simulated to create the baits and spikes. As displayed in Figure \@ref(fig:simOverview), the green bar represents 4 baits (or known pathway genes), the black bar represents the 12 spikes (“unknown” genes from POI or RP), yellow represents differential URP genes, and purple; a set of differential URPs with an alternative treatment response.  -->
 
-In $\mathbf{P}_{\beta1}^T$ the baits, spikes and other DE genes (all genes from POI, RP and URP) along with the remaining first half have similar positive values (represented by light grey) where the other 1000 have positive values in $\mathbf{P}_{\beta2}^T$ (grey), these are created to emulate the reality of the real data in which many genes are slightly correlated with eachother through the course of development, as well as to account for some nonlinearities which are otherwise ignored by our model. The remaining elements of $\mathbf{P}_{\alpha + \alpha\beta}^T$ and $\mathbf{P}_{\beta}^T$ are populated with zeroes. The $\mathbf{T}$ matrices represent the simulated scores for their respective factors. For blues, reds, greys and golds we have 4 different shades representing 4 unique values per factor level (total 8 unique values where reds and golds are sign flipped blues and greys respectively). Similarly oranges and pinks represent a growth condition independent time profile with four unique values. $\mathbf{E}$ represents random unstructured technical noise and the additional $\bm{1\mu}^T$ term in \@ref(eq:Sim2-bp) represents a mean value for each gene.
-
-
-
-```{r simOverview, echo=FALSE, fig.cap="Coexpression simulation, simplified overview. Colours correspond to the same genes in the different loading vectors (*P*). Black; baits (known POI genes), green; spikes (unknown POI genes), yellow; DE URP genes, purple DE URP genes with a different profile. In the score vectors (T); Blues, reds, greys and golds represent experimental conditions, oranges and pinks; time. Each of the textures in the ambient/residual part represent a distinct normally distributed set of random values.", out.width = '100%'}
-knitr::include_graphics("Sim_SL_diagram_simplified.png")
-```
+<!-- In $\mathbf{P}_{\beta1}^T$ the baits, spikes and other DE genes (all genes from POI, RP and URP) along with the remaining first half have similar positive values (represented by light grey) where the other 1000 have positive values in $\mathbf{P}_{\beta2}^T$ (grey), these are created to emulate the reality of the real data in which many genes are slightly correlated with eachother through the course of development, as well as to account for some nonlinearities which are otherwise ignored by our model. The remaining elements of $\mathbf{P}_{\alpha + \alpha\beta}^T$ and $\mathbf{P}_{\beta}^T$ are populated with zeroes. The $\mathbf{T}$ matrices represent the simulated scores for their respective factors. For blues, reds, greys and golds we have 4 different shades representing 4 unique values per factor level (total 8 unique values where reds and golds are sign flipped blues and greys respectively). Similarly oranges and pinks represent a growth condition independent time profile with four unique values. $\mathbf{E}$ represents random unstructured technical noise and the additional $\bm{1\mu}^T$ term in \@ref(eq:Sim2-bp) represents a mean value for each gene. -->
 
 
-\begin{equation}
-\begin{aligned}
-\bm{Y} &= \bm{1\mu}^T + \bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + \bm{E} \\
-\text{where for each element}\\
-&\bm{T}_{S_{ik}} \sim \mathcal{N}(0,1), \quad \bm{P}_{S_{jk}}^{\text{baits,spikes}} \sim \mathcal{N}(0.5,0.2) \\
-\text{and:} &\\
-\bm{P}_{S}^{\text{rest}} &= 0
-\end{aligned}(\#eq:Sim2-bp)
-\end{equation}
 
 
-The issue to address is the presence of many differential URPs; those that have strong between group correlations but no within group correlation. Here these differential genes relate  to the yellow bar in Figure \@ref(fig:simOverview). We incrementally increase the number of non-zero values and decrease the number of 0 values, which in figure \@ref(fig:simOverview) relates to increasing the size of the yellow bar, as well as varying the size (as quantified by the Frobenius norm) of the combined effect matrix through the scalar parameter *d* below;
 
-\begin{equation}
-\begin{aligned}
-\bm{Y} &= \bm{1\mu}^T + d(\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T) + \bm{T}_{\beta}\bm{P}_{\beta}^T + \bm{T}_{S}\bm{P}_{S}^T + \bm{E} \\
-\end{aligned}(\#eq:nCER)
-\end{equation}
+
+
+<!-- The issue to address is the presence of many differential URPs; those that have strong between group correlations but no within group correlation. Here these differential genes relate  to the yellow bar in Figure \@ref(fig:simOverview). We incrementally increase the number of non-zero values and decrease the number of 0 values, which in figure \@ref(fig:simOverview) relates to increasing the size of the yellow bar, as well as varying the size (as quantified by the Frobenius norm) of the combined effect matrix through the scalar parameter *d* below; -->
+
 
 
 
 
 ## Data simulation 2: Replication
 
-In order to evaluate the methods and indicate the levels of variance required for optimal performance we conduct a larger scale assay. Here we fix the number of DE URP genes to 30 which corresponds to the yellow bar size and the size of the within correlation effect matrix (\(\|\bm{T}_S\bm{P}_S^T\|_F = 0.025\)). We investigate a range of values for sizes of between variance (*d*) and random noise (*l*) across random structures (which correspond to repeated simulations of randomised values for all $\mathbf{T}$ matrices). Parameters were adjusted according to \@ref(eq:Test-2) on 20 randomised $\mathbf{T}$ matrices.
+The second simulation focuses on the effect of a different number of replicates. We investigate a range of values for sizes of between experimental variance (*d*) and random noise variation (*l*) across random structures (which correspond to 20 repeated simulations of randomised values for all $\mathbf{T}$ matrices). 
 
 \begin{equation}
 \begin{aligned}
@@ -348,9 +355,21 @@ In order to evaluate the methods and indicate the levels of variance required fo
 \end{aligned}(\#eq:Test-2)
 \end{equation}
 
-
-
 On these 20 datasets, per condition, the replicate number $n_r$ was also varied: the number of replicates $n_r \in 3:15$ per experimental condition were sampled from a maximum $n_r$ of 15.
+
+With this setup we test the feasibility range of MASCARA with respect to the ratio of 3 key variance parameters namely:
+1. Within group correlation structure
+2. Between group correlation structure
+3. Random noise
+
+Here we set a fixed size of within group correlation structure (\(\|\bm{T}_S\bm{P}_{S}^T\|_F = 0.025\)) as well as number of non-pathway DE genes to 30 (yellow bar size Figure \@ref(fig:simOverview)) across all iterations of this test. We vary the sizes of the other two variance parameters (*d* and *l*). Furthermore we also show the effect of replicate number and demonstrate that MASCARA (along with the other methods) can be applied to data with generic profiles, not limited to the specific structures that were used to demonstrate the differences in coexpression analysis with simulation 1. Here we create 20 datasets with random combined effect and within group correlation structures.
+
+
+
+<!-- In order to evaluate the methods and indicate the levels of variance required for optimal performance we conduct a larger scale assay. Here we fix the number of DE URP genes to 30 which corresponds to the yellow bar size and the size of the within correlation effect matrix (\(\|\bm{T}_S\bm{P}_S^T\|_F = 0.025\)). We investigate a range of values for sizes of between variance (*d*) and random noise (*l*) across random structures (which correspond to repeated simulations of randomised values for all $\mathbf{T}$ matrices). Parameters were adjusted according to \@ref(eq:Test-2) on 20 randomised $\mathbf{T}$ matrices. -->
+
+
+
 
 
 
@@ -403,7 +422,9 @@ ref$Effect <- factor(ref$Effect, levels = c("Low PC1", "Medium PC1", "High PC1",
 
 ### Ranked correlations
 
-Pearson's correlation coefficient *r* is calculated between all columns of \(\bm{Y}\). Ranks are assigned to all non-bait transcripts for each bait based on *r*, with the lowest rank for the highest correlation. These ranks are averaged across all baits (see supplementary equation \@ref(eq:rankcor)).
+Pearson's correlation coefficient $r_{b\tilde{j}}$ is calculated between all bait genes (b = 1..B) and all other genes ($\tilde{j} = 1...\tilde{J}$). Ranks $\tilde{r}_{b\tilde{j}}$ are assigned for each $r_{b\tilde{j}}$ such that the highest correlation for each bait gene b receives the lowest rank. These ranks are averaged across all baits B (see supplementary equation \@ref(eq:rankcor)).
+
+
 
 <!-- For example the correlation between a SL gene $j_{sl}$ and a non-SL gene $j_q$ is calculated as: -->
 
@@ -426,7 +447,7 @@ The multivariate generalised linear model (GLM) can be expressed as:
 \end{aligned}(\#eq:glm)
 \end{equation}
 
-where \(\mathbf{Y}\) is the response matrix of dimension \(I \times J\), \(\mathbf{X}\) is the model matrix of dimension \(I \times p\), containing the coded indicator levels for each of the levels for each factor and their interactions,
+where \(\mathbf{Y}\) is the response matrix of dimension \(I \times J\), \(\mathbf{X}\) is the model matrix of dimension \(I \times p\), containing the sumcoded indicator levels for each of the levels for each factor and their interactions,
  \(\mathbf{\Theta}\) is the parameter matrix of dimension \(p \times J\) and
  \(\mathbf{E}\) is the error matrix of dimension \(I \times J\).
 
@@ -450,7 +471,7 @@ where: $\mathbf{M}_f$ is the effect matrix corresponding to effect $f$, $\hat{\m
 
 \begin{equation}
 \begin{aligned}
-\mathbf{M}_f=\left[0|\mathbf{X}_f |0\right]\mathbf{\hat{\Theta}} = \mathbf{X}_f \mathbf{\hat{\Theta}}_f
+\mathbf{M}_f=\left[0|\mathbf{X}_f |0\right]\left[0|\mathbf{\hat{\Theta}}_f |0\right]^T = \mathbf{X}_f \mathbf{\hat{\Theta}}_f
 \end{aligned}(\#eq:scim)
 \end{equation}
 
@@ -477,8 +498,7 @@ With genes selected from:
 \begin{equation}
 \begin{aligned}
 \mathbf{\hat{Y}} =& \mathbf{M}_{\alpha} + \mathbf{M}_{\alpha\beta}
-                =& \mathbf{T}_{\alpha}\mathbf{P}_{\alpha}^T + \mathbf{T}_{\alpha\beta}\mathbf{P}_{\alpha\beta}^T
-                =& \mathbf{T}_{\alpha + \alpha\beta}\mathbf{P}_{\alpha + \alpha\beta}^T
+                 =& \mathbf{T}_{\alpha + \alpha\beta}\mathbf{P}_{\alpha + \alpha\beta}^T
 \end{aligned}(\#eq:ascagenes)
 \end{equation}
 
@@ -572,7 +592,7 @@ To evaluate performance we use log2 geometric mean rank (log2(GMR); $\bar{\gamma
 \end{aligned}(\#eq:GMR)
 \end{equation}
 
-for $J_{spike}$ spikes. A lower $\gamma$ indicates better performance.
+for $J_{spike}$ spikes. A lower $\bar{\gamma}$ indicates better performance.
 
 
 # Results
@@ -748,24 +768,24 @@ for(i in 1:length(methods))
 
 ## Simulation 1: Combined effect size and number of differential genes
 
-For this simulation we have some experimental variance for the combined effect and time ($\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T$ and $\bm{T}_{\beta}\bm{P}_{\beta}^T$ respectively) a fixed amount of random noise \(\bm{E}\) and a fixed amount of structured residual variance $\bm{T}_S\bm{P}_{S}^T$, within which our 4 baits and 12 spikes share a correlation structure. This reflects the situation expected from the real data example - drastic effect caused by nutrient deficiency, which also activates the SL pathway. The POI/RP genes are expected to share some variance that is independent to the experiment - the 4 baits and 12 spikes load on to the structured part of the noise $\bm{T}_S\bm{P}_{S}^T$.
+For this simulation we have some experimental variance for the combined effect and time ($\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T$ and $\bm{T}_{\beta}\bm{P}_{\beta}^T$ respectively) a fixed amount of random noise \(\bm{E}\) and a fixed amount of structured ambient/residual variance $\bm{T}_S\bm{P}_{S}^T$, within which our 4 baits and 12 spikes share a correlation structure. This reflects the situation expected from the real data example - drastic effect caused by nutrient deficiency, which also activates the SL pathway. The POI/RP genes are expected to share some variance that is independent to the experiment - the 4 baits and 12 spikes load on to the structured part of the noise $\bm{T}_S\bm{P}_{S}^T$.
 
 ```{r tc, echo = F, fig.cap= "Results of simulation 1 for all 4 methods. Log2 geometric mean rank (log2(GMR)) as a function of the number of differentially expressed URP genes (x-axis) and combined effect size (y axis); ($CE = \\|\\mathbf{T}_{\\alpha + \\alpha\\beta}\\mathbf{P}_{\\alpha + \\alpha\\beta}^T\\|_F$), lower log2(GMR); dark blue, indicates better performance. ASCA model calculated per equation \\@ref(eq:ascamodel), PLS model per equation \\@ref(eq:plsmodel)."}
 wrap_plots(plots) + plot_layout(guides = "collect")
 
 ```
 
-We can see in Figure \@ref(fig:tc) that MASCARA was neither affected by the presence of an increasing number of non-pathway DE genes nor the size of this effect. Correlations, ASCA and PLS, however, all showed the expected breakdown in performance due to the injection of more DE URP genes. This was the expected result as the between group variance is removed with MASCARA.
+We can see in Figure \@ref(fig:tc) that MASCARA was neither affected by the presence of an increasing number of non-pathway DE genes nor the size of this effect. Correlations, ASCA and PLS, however, all showed the expected breakdown in performance due to the injection of more DE URP genes. This was the expected result as the experimental between group variance is removed with MASCARA.
 
 ## Simulation 2: Replication
 
-The results from above were obtained from datasets with varying noise, with core aspects such as the underlying structure, the number of replicates, the strength of correlation between variables, and the size of the noise remained fixed. With the following, we test the feasibility range of MASCARA with respect to the ratio of 3 key variance parameters namely:
+<!-- The results from above were obtained from datasets with varying noise, with core aspects such as the underlying structure, the number of replicates, the strength of correlation between variables, and the size of the noise remained fixed. With the following, we test the feasibility range of MASCARA with respect to the ratio of 3 key variance parameters namely: -->
 
-1. Within group correlation structure
-2. Between group correlation structure
-3. Random noise
+<!-- 1. Within group correlation structure -->
+<!-- 2. Between group correlation structure -->
+<!-- 3. Random noise -->
 
-Here we set a fixed size of within group correlation structure (\(\|\bm{T}_S\bm{P}_{S}^T\|_F = 0.025\)) as well as number of non-pathway DE genes to 30 (yellow bar size \@ref(fig:simOverview)) across all iterations of this test. We vary the sizes of the other two variance parameters (*d* and *l*). Furthermore we also show the effect of replicate number and demonstrate that MASCARA (along with the other methods) can be applied to data with generic profiles, not limited to the specific structures that were used to demonstrate the differences in coexpression analysis above. Here we create 20 datasets with random combined effect and within group correlation structures.
+<!-- Here we set a fixed size of within group correlation structure (\(\|\bm{T}_S\bm{P}_{S}^T\|_F = 0.025\)) as well as number of non-pathway DE genes to 30 (yellow bar size \@ref(fig:simOverview)) across all iterations of this test. We vary the sizes of the other two variance parameters (*d* and *l*). Furthermore we also show the effect of replicate number and demonstrate that MASCARA (along with the other methods) can be applied to data with generic profiles, not limited to the specific structures that were used to demonstrate the differences in coexpression analysis above. Here we create 20 datasets with random combined effect and within group correlation structures. -->
 
 
 ```{r, echo = F}
@@ -853,12 +873,15 @@ l <- 1
 One_Balance <- list()
 for(i in orders){
   
-  One_Balance[[i]] <- ggplot(mRES[which(mRES$nCERs == orders[i]),], aes(x = Replicate_Number, y = log2(F1_Score), colour = Method, shape = Method)) +
+  One_Balance[[i]] <- ggplot(mRES[which(mRES$nCERs == orders[i]),], aes(x = Replicate_Number, y = log2(F1_Score), colour = Method, shape = Method, fill = Method)) +
   scale_color_viridis(discrete = T)+
+  # scale_fill_viridis(discrete = T)+
+
+        # scale_shape_manual(values = c(0:3)) +
     stat_summary() +
     ylim(0,max ) +
   labs(subtitle = paste0("CE = ", main_lev[l], " E = ", nse[l]))+
-  theme_bw() +
+  theme_dark() +
       theme(axis.title = element_blank()) 
 
   l <- l + 1
@@ -867,7 +890,7 @@ for(i in orders){
 ```
 
 
-```{r repres, echo = F, fig.cap= "Simulation 2 results. Replications and variance type feasibility ranges. X axes; replicate number, y axes log2 transformed geometric mean rank. Each facet is created with set parameters for combined effect size ($CE = \\|\\mathbf{T}_{\\alpha + \\alpha\\beta}\\mathbf{P}_{\\alpha + \\alpha\\beta}^T\\|_F$) and random gaussian noise size ($E = \\|\\mathbf{E}\\|_F$). Dots are median performance across 20 random structures.  ASCA model calculated per equation \\@ref(eq:ascamodel), PLS model per equation \\@ref(eq:plsmodel)."}
+```{r repres, echo = F, fig.cap= c("Simulation 2 results. Replications and variance type feasibility ranges. X axes; replicate number, y axes log2 transformed geometric mean rank. Each facet is created with set parameters for combined effect size ($CE = \\|\\mathbf{T}_{\\alpha + \\alpha\\beta}\\mathbf{P}_{\\alpha + \\alpha\\beta}^T\\|_F$) and random gaussian noise size ($E = \\|\\mathbf{E}\\|_F$). Dots are median performance across 20 random structures.  ASCA model calculated per equation \\@ref(eq:ascamodel), PLS model per equation \\@ref(eq:plsmodel).")}
 
 
 
@@ -881,8 +904,7 @@ test_patch <- (One_Balance[[1]] + One_Balance[[2]] + One_Balance[[3]]  + ylab(NU
 # One_Balance[[1]] + One_Balance[[2]]/
 #   One_Balance[[3]] + plot_layout(guides = "collect")
 
-
-ps1 <- grid.arrange(ps, left = "log2(GMR)", bottom = "Replicate Number                     ")
+# ps1 <- grid.arrange(ps, left = "log2(GMR)", bottom = "Replicate Number                     ")
 
 a <- knitr::include_graphics("replication_res.png")
 a
@@ -891,16 +913,16 @@ a
 ```
 
 
-It was expected that all geometric mean ranks converge towards a minimum with increasing numbers of replicates, see \@ref(fig:repres). Perfect detection of 12 spikes in top 12 candidates is achieved with a log2 geometric mean rank of 2.4, MASCARA was able to achieve this however the other methods were perturbed by the presence of the 30 differential URP genes. With more replicates MASCARA always outperforms competitors. With higher combined effect size (CE) MASCARA outperforms the other methods but its performance is affected by random noise (E) size. 
+It was expected that all geometric mean ranks converge towards a minimum with increasing numbers of replicates, see \@ref(fig:repres). Perfect detection of 12 spikes in top 12 candidates is achieved with a log2 geometric mean rank of 2.4, MASCARA was able to achieve this, however, the other methods were perturbed by the presence of the 30 differential URP genes. With more replicates MASCARA always outperforms competitors. With higher values of *d* (larger combined effect size) (CE) MASCARA outperforms the other methods but its performance is affected by amount of random noise (E) size indicated by *l*. 
 
-In simulation 2 we fixed the number of differential URP genes to 30, however this is less than 2% of the total number of genes in each dataset. In the real data example more than 10% of of the total number of genes are differentially expressed. As shown in simulation 1 (Figure \@ref(fig:tc)) higher numbers of DE URP genes results in higher geometric mean rank of the spikes for correlations, ASCA and PLS.  MASCARA is designed specifically to mitigate the effect of large numbers of DE URP genes. Here we show that this is achieved.
+In simulation 2 we fixed the number of differential URP genes to 30, however this is less than 2% of the total number of genes in each dataset. In the real data example more than 10% of of the total number of genes are differentially expressed. As shown in simulation 1 (Figure \@ref(fig:tc)) higher numbers of DE URP genes results in higher log2 geometric mean rank (log2(GMR)) of the spikes for correlations, ASCA and PLS.  MASCARA is designed specifically to mitigate the effect of large numbers of DE URP genes. Here we show that this is achieved.
 
 
 # Real Data Applications
 
-It is apparent that MASCARA has a particular use case for coexpression analysis in data where there is a lot of experimentally induced between-group variance across many genes as well as some within-group correlation structure shared between pathway genes that is caused by independent non-controlled ambient factors.
+It is apparent that MASCARA has a particular use case for coexpression analysis in data where there is a lot of experimentally induced between-group variance across many genes as well as some within-group correlation structure shared between POI genes that is caused by independent non-controlled ambient factors.
 
-Here we illustrate an application of MASCARA to the dataset from @haiderTranscriptomeAnalysisPhosphate2023. For this we take 4 core strigolactone genes (Os11t0587000, Os04t0550600, Os01t0746400 and Os01t0700900 of the 9 used for illustrations in figures \@ref(fig:Dataset1-Overview) and \@ref(fig:ASCA-1)) as baits and investigate their relationship with top candidate genes. 
+Here we illustrate an application of MASCARA to the dataset from @haiderTranscriptomeAnalysisPhosphate2023. For this we take 4 core strigolactone genes (Os11t0587000, Os04t0550600, Os01t0746400 and Os01t0700900 of the 9 used for illustrations in Figures \@ref(fig:Dataset1-Overview) and \@ref(fig:ASCA-1)) as baits and investigate their relationship with top candidate genes. 
 
 
 ```{r real data import}
@@ -1150,7 +1172,7 @@ ASCA_cands2 <- ASCA_cands2[which(ASCA_cands2[,2] < 0),]
 ASCA_cands2 <- ASCA_cands2[order(ASCA_cands2[,2]),]
 ```
 
-In the real data from @haiderTranscriptomeAnalysisPhosphate2023 some plants were subjected to massive stress with the phosphate limitation. This is therefore reflected by large differences in the transcriptome compared to those with a normal supply of P. This limitation affected many more genes than those directly involved in SL biosynthesis. Furthermore, there appears to be a stronger experiment-independent relationship amongst the SL genes compared to their correlations with other DE genes, as displayed in Figure \@ref(fig:residualdists) where the blue distribution indicates residual correlations between the 9 POI transcripts from figures \@ref(fig:Dataset1-Overview) and \@ref(fig:ASCA-1) and the red indicates residual correlations between these 9 and top DE URP genes.
+In the real data from @haiderTranscriptomeAnalysisPhosphate2023 some plants were subjected to massive stress with the phosphate limitation. This is, therefore, reflected by large differences in the transcriptome compared to those with a normal supply of P. This limitation affected many more genes than those directly involved in SL biosynthesis. Furthermore, there appears to be a stronger relationship amongst the SL genes in the ambient variation compared to their correlations with other DE URP genes, as displayed in Figure \@ref(fig:residualdists) where the blue distribution indicates correlations between residuals of the 9 POI transcripts from Figures \@ref(fig:Dataset1-Overview) and \@ref(fig:ASCA-1) and the red indicates correlations between residuals of these 9 and top DE URP genes.
 
 ```{r residualdists, fig.cap=c("Distributions of Fisher transformed Pearson correlations (supplementary equation \\@ref(eq:Fisher)) in residuals from the ASCA model on the data from @haiderTranscriptomeAnalysisPhosphate2023. Blue indicates correlations between SL pathway genes, red indicates correlations between SL pathway genes and top 10% DE URP genes (upregulated in P- over P+).")}
 
@@ -1615,7 +1637,7 @@ rownames(fpm) <- NULL
 ```
 
 
-Some example top candidate genes are shown in Figure \@ref(fig:realcandidates). The problem of dominant between group variation is again exemplified here. Several of the top candidates detected by correlations (ASCA and PLS, results not shown) show no indication of within group correlations. Candidates selected with MASCARA, on the other hand, consistently show within group correlations with the baits. Furthermore, the strigolactone pathway, which is still under active investigation, has several uncharacterised biosynthetic steps. These are thought to be carried out by cytochrome p450s. The top candidates from MASCARA contain at least three (putative) cytochrome p450 genes that have not yet been biologically investigated in SL biosynthesis, as well as, a methyltransferase and several putative carotenoid associated genes. MASCARA also detected genes linked to Gibberellins (GA) preferentially to general phosphate starvation genes. The GA pathway has been linked to the strigolactones (@itoRegulationStrigolactoneBiosynthesis2017, @marzecStrigolactonesGibberellinsNew2017). The interaction between these two pathways has been characterised recently under nitrogen limitation by @sunStrigolactoneGibberellinSignaling2023.
+Some example top coexpression candidate genes are shown in Figure \@ref(fig:realcandidates). The problem of dominant between group variation is again exemplified here. Several of the top candidates detected by correlations (ASCA and PLS, results not shown) show no indication of within group correlations. Candidates selected with MASCARA, on the other hand, consistently show within group correlations with the baits. Furthermore, the strigolactone pathway, which is still under active investigation, has several uncharacterised biosynthetic steps. These are thought to be carried out by cytochrome p450s. The top candidates from MASCARA contain at least three (putative) cytochrome p450 genes that have not yet been biologically investigated in SL biosynthesis, as well as, a methyltransferase and several putative carotenoid associated genes. MASCARA also detected genes linked to Gibberellins (GA) preferentially to general phosphate starvation genes. The GA pathway has been linked to the strigolactones (@itoRegulationStrigolactoneBiosynthesis2017, @marzecStrigolactonesGibberellinsNew2017). The interaction between these two pathways has been characterised recently under nitrogen limitation by @sunStrigolactoneGibberellinSignaling2023.
 
 
 ```{r realcandidates, fig.cap="Selected candidates from A-C ranked correlations and D-F MASCARA. X axes; transformed expression level of one of the bait genes (CCD8), y axes; expression levels of three example coexpression candidates for each method (see @haiderTranscriptomeAnalysisPhosphate2023 for preprocessing details)."}
@@ -1661,17 +1683,17 @@ a
 
 # Discussion and conclusions
 
-In this article we introduced multivariate ASCA residual analysis (MASCARA) as a method for coexpression analysis in data containing a dominant variance structure from a known (experimental) source. MASCARA estimates effects through the GLM with a design matrix to remove the variance between conditions, then the residual matrix can be decomposed through PLS2, with feature ranking through target projections. This framework enables the investigation of multivariate relationships between a set of baits and the rest of the data. MASCARA thrives on the fact that within the typical experimental setup small systematic variance exists between replicates due to variations in ambient factors that affect the plant, and therefore the variance structures in the resulting data. 
+In this article we introduced multivariate ASCA residual analysis (MASCARA) as a method for coexpression analysis in data containing a dominant variance structure from a known (experimental) source. MASCARA estimates effects through the GLM with a design matrix to remove the variance between conditions, then the residual matrix can be decomposed through PLS2, with feature ranking through target projections. This framework enables the investigation of multivariate relationships between a set of bait genes and all other genes in the dataset. MASCARA thrives on the fact that within the typical experimental setup small systematic variance exists between replicates due to variations in ambient factors that affect the plant, and therefore the variance structures in the resulting data. 
 
-Through simulation studies we showed the conditions under which MASCARA is suitable for coexpression analysis and compared it to a selection of other coexpression methods (ASCA+, PLS2 and correlations). These methods were applied to data from @haiderTranscriptomeAnalysisPhosphate2023 exploring the strigolactone pathway and simulated data based on the structure of the Haider data. In a coexpression context, within certain assumed parameters of variance structure (dominant between-group, existing within-group), MASCARA outperformed competitors. Ranked correlations, ASCA (@smildeANOVAsimultaneousComponentAnalysis2005, @thielASCAAPCAExtensions2017) and PLS (@woldCollinearityProblemLinear1984) are all affected by dominant between-group variance, which is a common occurrence in experimental data, exemplified here by the dataset from @haiderTranscriptomeAnalysisPhosphate2023 but discussed elsewhere (@farahbodUntanglingEffectsCellular2020, @zhaoWeightedGeneCoexpression2010, @chowdhuryDifferentialCoExpressionAnalysis2020). 
+Through simulation studies we showed the conditions under which MASCARA is suitable for coexpression analysis and compared it to a selection of other coexpression methods (ASCA+, PLS2 and correlations). These methods were applied to data from @haiderTranscriptomeAnalysisPhosphate2023 exploring the strigolactone pathway and simulated data based on the structure of the Haider data. In a coexpression context, within certain assumed parameters of variance structure (dominant between-group, existing within-group), MASCARA outperformed competitors. Ranked correlations, ASCA (@smildeANOVAsimultaneousComponentAnalysis2005, @thielASCAAPCAExtensions2017) and PLS (@woldCollinearityProblemLinear1984) are all affected by dominant experimental between-group variance, which is a common occurrence in experimental data, exemplified here by the dataset from @haiderTranscriptomeAnalysisPhosphate2023 but discussed elsewhere (@farahbodUntanglingEffectsCellular2020, @zhaoWeightedGeneCoexpression2010, @chowdhuryDifferentialCoExpressionAnalysis2020). 
 
-The feature selection stage of MASCARA uses an average vector constructed from the loadings of the baits onto which to project the loadings of other genes, which is similar to target projection in @kvalheimInterpretationPartialLeast2010 although we construct the target vector from averaging the loadings in a PLS2 model as opposed to already having it defined with the univariate response in PLS1. There are many established methods for feature selection in PLS which include Variable Importance in Projection (VIP) and Selectivity Ratio (@rajalahtiBiomarkerDiscoveryMass2009), however these methods focus on the importance of variables in the construction of the model rather than a directional association with the response block as with the $\mathbf{\bar{q}}$ target projection stage. With this averaged target projection approach, as an extension of Kvalheim's target projection in PLS1 models, we can use the information in a set of baits to define a direction in the latent space which can then be used as an axis to determine the relatedness of other genes. This assumes moderate to high correlation in the residuals of the baits, which is a realistic assumption in coexpression analysis although should be verified in the selection of baits.
+The feature selection stage of MASCARA uses an average vector constructed from the loadings of the baits onto which the loadings of other genes are projected. This approach is similar to target projection in @kvalheimInterpretationPartialLeast2010 although we construct the target vector from averaging the loadings in a PLS2 model as opposed to already having it defined with the univariate response in PLS1. There are many established methods for feature selection in PLS which include Variable Importance in Projection (VIP) and Selectivity Ratio (@rajalahtiBiomarkerDiscoveryMass2009), however these methods focus on the importance of variables in the construction of the model rather than a directional association with the response block as with the $\mathbf{\bar{q}}$ target projection stage. With this averaged target projection approach, as an extension of Kvalheim's target projection in PLS1 models @kvalheimInterpretationPartialLeast2010, we can use the information in a set of baits to define a direction in the latent space which can then be used as an axis to determine the relatedness of other genes. This assumes moderate to high correlation in the residuals of the baits, which is a realistic assumption in coexpression analysis although should be verified in the selection of baits.
 
-Our analysis framework does not consider different correlation structures within the residual variance, this could be an issue especially in the cases similar to @caldanaHighdensityKineticAnalysis2011 where different combinations of experimental factors show differential within-group correlation structure. With MASCARA these will not be preferentially detected, as the focus is on detecting postively associating features. Ideally there would be enough samples to calculate robust correlations per group, to account for possible rewiring under different conditions, but in our case we focus on experiments where there are generally not enough replicates to do this. Experiments with higher replication number are always desirable from the point of view of data analysis. However, this is not always feasible due to time and space constraints. We tested the effects of replication number and found that MASCARA can outperform its competitors with lower replication, especially in data containing many differential genes between experimental conditions. This advantage holds as long as there is a realistic amount of structured variance caused by undocumented ambient factors. 
+Our analysis framework does not consider different correlation structures within the residual variance, this could be an issue especially in the cases similar to @caldanaHighdensityKineticAnalysis2011 where different combinations of experimental factors show different within-group correlation structures. This type of relationship can be seen in Figure \@ref(fig:realcandidates) where the P- experiments show high positive correlation between the genes of the same pathway while the P+ experiments show a negative correlation.  With MASCARA these will not be preferentially detected, as the focus is on detecting positively associating features. Ideally there would be enough samples to calculate robust correlations per group, to account for possible rewiring under different conditions, but in our case we focus on experiments where there are generally not enough replicates to do this. Experiments with higher replication number are always desirable from the point of view of data analysis. However, this is not always feasible due to time and space constraints. We tested the effects of replication number and found that MASCARA can outperform its competitors with lower replication, especially in data containing many differential genes between experimental conditions. This advantage holds as long as there is a realistic amount of structured variance caused by undocumented ambient factors. 
 
-In coexpression analysis, there is no need for class balance, it is in fact better to have more data points in the class where the pathway is induced (P- in the example dataset). When the mechanism of interest is only active in the case condition then the control samples are mostly redundant. With more samples in the condition of interest the reliability of the coexpression analysis will improve. The MASCARA approach indicates that the typical experimental design used for DE is not optimal for coexpression studies. The fact that the residuals need to be isolated to find within group variance confirms the notion that coexpression analysis warrants different experiments than those used for DE studies. If quantification of differential expression is also needed, for example to confirm the pathway under study is affected by the treatment, but the main focus of research is coexpression, then it is an option to have just a few samples in a control condition to confirm the experimental treatment has caused the desired effect. This was not tested explicitly here, however if pathway genes are not active in a given condition then this set of samples does not provide any useful coexpression information.
+In coexpression analysis, there is no need for class balance, it is in fact better to have more data points in the class where the pathway is induced (P- in the example dataset). When the POI is only active in the case condition then the control samples are mostly redundant. With more samples in the condition of interest the reliability of the coexpression analysis will improve. The MASCARA approach indicates that the typical experimental design used for DE is not optimal for coexpression studies. The fact that the residuals need to be isolated to find within group variance confirms the notion that coexpression analysis warrants different experiments than those used for DE studies. If quantification of differential expression is also needed, for example to confirm the pathway under study is affected by the treatment, but the main focus of research is coexpression, then it is an option to have just a few samples in a control condition to confirm the experimental treatment has caused the desired effect. This was not tested explicitly here, however if pathway genes are not active in a given condition then this set of samples does not provide any useful coexpression information.
 
-This work has outlined and tested a basic use of MASCARA where the relationship between baits and unknown pathway genes is predefined to be positive. The method is not limited to the calculation of positive associations, however performance in detecting negative correlations (indicative of inhibitory or negative feedback processes) or more complex relationships has not been tested within the current simulations. Our approach was based off the structure of the Haider RNAseq dataset, however the method is applicable across other organisms and omics types. This holds under the assumption that the set of baits have a multivariate relationship between themselves and multiple other (unknown) genes. These genes are also related to the baits, as in our partially characterised strigolactone pathway example. In untargeted metabolomics datasets under similar experimental conditions these assumptions are also likely to be met.
+This work has outlined and tested a basic use of MASCARA where the relationship between baits and unknown pathway genes is predefined to be positive. The method is not limited to the calculation of positive associations, however performance in detecting negative correlations (indicative of inhibitory or negative feedback processes) or more complex relationships has not been tested within the current simulations. Our approach was based on the structure of the study by Haider with RNAseq measurements of rice plants, however the method is applicable across other organisms and omics types. This holds under the assumption that the set of baits have a multivariate relationship between themselves and multiple other (unknown) genes. These genes are also related to the baits, as in our partially characterised strigolactone pathway example. In untargeted metabolomics datasets under similar experimental conditions these assumptions are also likely to be met.
 
 Taken together our results indicate that the lack of ability to discern different types of variance in a dataset can compromise the detection of true coexpression patterns. MASCARA accounts for the different types of (experimental and ambient) variance and enables finer scale detection of within group variance structure. 
 
@@ -1717,7 +1739,7 @@ Ranked correlations are calculated as:
 
 \begin{equation}
 \begin{aligned}
-Rank_{\tilde{J}} = \frac{\sum_{b=1}^{B}rank_{b\tilde{j}}}{B}  
+Rank_{\tilde{J}} = \frac{\sum_{b=1}^{B}\tilde{r}_{b\tilde{j}}}{B}  
 \end{aligned}(\#eq:rankcor)
 \end{equation}
 
@@ -1737,15 +1759,6 @@ z = \frac{1}{2}ln(\frac{1 + r}{1-r})
 
 
 <!-- MASCARA example run on $params: -->
-
-
-```{r}
-
-
-
-```
-
-
 
 
 
