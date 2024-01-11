@@ -1862,121 +1862,17 @@ MASCARA4_test <- function(resids,ref, baits, spikes, ncands){
   ######
   
   sPLS_bait_cands <- loadings_r_baits[order(loadings_r_baits[,1], decreasing = TRUE),]
-  
-  
-  # #####
-  # 
-  # #loop over rotation matrices from -pi/4 -> pi/4
-  # #resolution of 100 (?)
-  # 
-  # range.ang <- seq(from = -pi/6, to = pi/6, length.out = 60)
-  # 
-  # ###
-  # 
-  # i <- NULL
-  # L_R <- data.frame()
-  # LOADINGS_R <- list()
-  # 
-  # for(i in 1:length(range.ang)){
-  #   
-  #   
-  #   ang <- range.ang[i]
-  #   
-  #   rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = TRUE) #clockwise rotation
-  #   loadings_r <- t(apply(loadings_r_baits[,c("comp1","comp2")],1,rotate, y = rot.mat))
-  #   colnames(loadings_r) <- c("comp1","comp2")
-  #   L_R <- rbind(L_R,loadings_r)
-  #   LOADINGS_R[[i]] <- loadings_r
-  #   
-  #   
-  # }
-  # 
-  # # colnames(LOADINGS_R) <- c("comp1","comp2")
-  # L_R$rad <- rep(range.ang, each = nrow(sPLS_cands))
-  # L_R$frame <- rep(c(1:length(range.ang)), each = nrow(sPLS_cands))
-  # 
-  # 
-  # 
-  # #get sd of original comp1 distribution
-  # sigma <- sd(sPLS_cands$comp1)
-  # 
-  # big.T.sig <- function(x,y){
-  #   big <- length(which(x > 2.5*y))
-  #   return(big)
-  # }
-  # 
-  # i <- NULL
-  # res <- c()
-  # for(i in 1:length(LOADINGS_R)){
-  #   
-  #   r <- big.T.sig(LOADINGS_R[[i]][,1],sigma)
-  #   res <- c(res,r)
-  # }
-  # 
-  # 
-  # RES <- cbind.data.frame("Rad" = range.ang, "Density" = res)
-  # 
-  # density <- ggplot(RES, aes(x = Rad, y = Density))+
-  #   geom_smooth() + theme_bw() + ggtitle("Number of points above 2*sigma of original rotation")
-  # 
-  # density
-  # 
-  # 
-  # RES <- cbind.data.frame("Rad" = range.ang, "Density" = res)
-  # 
-  # #taken from https://stackoverflow.com/questions/6836409/finding-local-maxima-and-minima
-  # inflect <- function(x, threshold = 1){
-  #   up   <- sapply(1:threshold, function(n) c(x[-(seq(n))], rep(NA, n)))
-  #   down <-  sapply(-1:-threshold, function(n) c(rep(NA,abs(n)), x[-seq(length(x), length(x) - abs(n) + 1)]))
-  #   a    <- cbind(x,up,down)
-  #   list(minima = which(apply(a, 1, min) == a[,1]), maxima = which(apply(a, 1, max) == a[,1]))
-  # }
-  # 
-  # 
-  # ggres <- ggplot_build(density)$data[[1]]
-  # infs <- inflect(ggres$y)
-  # rads <- ggres$x[infs$maxima]
-  # 
-  # #######
-  # 
-  # maxima.ang <- rads
-  # 
-  # ###
-  # 
-  # i <- NULL
-  # # L_R <- data.frame()
-  # sPLS_maxima_cands <- list()
-  # 
-  # for(i in 1:length(maxima.ang)){
-  #   
-  #   
-  #   ang <- maxima.ang[i]
-  #   
-  #   rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = TRUE) #clockwise rotation
-  #   loadings_r <- as.data.frame(t(apply(loadings_r_baits[,c("comp1","comp2")],1,rotate, y = rot.mat)))
-  #   colnames(loadings_r) <- c("comp1","comp2")
-  #   # L_R <- rbind(L_R,loadings_r)
-  #   sPLS_maxima_cands[[i]] <- loadings_r[order(loadings_r$comp1, decreasing = TRUE),]
-  #   
-  # }
-  
-  # sPLS_maxima_cands <- list(sPLS_bait_cands)
+
   sPLS_maxima_cands <- as.data.frame(sPLS_bait_cands)
   
   
   Fref2 <- Fref[-which(Fref$Feature %in% baits),]
   Fref2 <- Fref2[match(rownames(sPLS_maxima_cands[[1]]),Fref2$Feature),]
-  
-  # loadings <- loadingplot(sPLS_maxima_cands[[1]], meta, baits = Fref2$Feature[which(Fref2$Baits %in% c("Pathway","PSI"))],
-  #                      importance, PCs = c(1,2), ref = Fref2, aes(x = comp1, y = comp2, colour = Baits, label = Description))
-  # 
-  
-  # F1_scores <- F1_plot(sPLS_maxima_cands, n = 500, baits = spikes)
+
   
   RP <- prod(which(rownames(sPLS_maxima_cands) %in% spikes))^(1/length(spikes))
   
-  
-  # Results <- list("Candidates" = sPLS_maxima_cands, "Plot" = loadings, "Density" = density)
+
   
   return(list(RP, sPLS_maxima_cands))
 }
@@ -2031,18 +1927,7 @@ MASCARA <- function(resids,ref, baits){
   #########
   
   avg_point <- angles[nrow(angles),]/nrow(angles)
-  
-  # rot.mat <- matrix(c(0,-1,1,0),nrow = 2, byrow = TRUE)  #90 degree clockwise rotation
-  # 
-  # rotated_point <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat)
-  # 
-  # ang <- angle(avg_point,c(1,0))
-  # 
-  # rot.mat2 <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = TRUE) #clockwise rotation
-  # rotated_point2 <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat2)
-  
-  #######
-  
+
   
   #rotated loadings
   ang <- angle(avg_point,c(1,0))
@@ -2065,102 +1950,7 @@ MASCARA <- function(resids,ref, baits){
   sPLS_bait_cands <- loadings_r_baits[order(loadings_r_baits[,1], decreasing = TRUE),]
   
   
-  # #####
-  # 
-  # #loop over rotation matrices from -pi/4 -> pi/4
-  # #resolution of 100 (?)
-  # 
-  # range.ang <- seq(from = -pi/6, to = pi/6, length.out = 60)
-  # 
-  # ###
-  # 
-  # i <- NULL
-  # L_R <- data.frame()
-  # LOADINGS_R <- list()
-  # 
-  # for(i in 1:length(range.ang)){
-  #   
-  #   
-  #   ang <- range.ang[i]
-  #   
-  #   rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = TRUE) #clockwise rotation
-  #   loadings_r <- t(apply(loadings_r_baits[,c("comp1","comp2")],1,rotate, y = rot.mat))
-  #   colnames(loadings_r) <- c("comp1","comp2")
-  #   L_R <- rbind(L_R,loadings_r)
-  #   LOADINGS_R[[i]] <- loadings_r
-  #   
-  #   
-  # }
-  # 
-  # # colnames(LOADINGS_R) <- c("comp1","comp2")
-  # L_R$rad <- rep(range.ang, each = nrow(sPLS_cands))
-  # L_R$frame <- rep(c(1:length(range.ang)), each = nrow(sPLS_cands))
-  # 
-  # 
-  # 
-  # #get sd of original comp1 distribution
-  # sigma <- sd(sPLS_cands$comp1)
-  # 
-  # big.T.sig <- function(x,y){
-  #   big <- length(which(x > 2.5*y))
-  #   return(big)
-  # }
-  # 
-  # i <- NULL
-  # res <- c()
-  # for(i in 1:length(LOADINGS_R)){
-  #   
-  #   r <- big.T.sig(LOADINGS_R[[i]][,1],sigma)
-  #   res <- c(res,r)
-  # }
-  # 
-  # 
-  # RES <- cbind.data.frame("Rad" = range.ang, "Density" = res)
-  # 
-  # density <- ggplot(RES, aes(x = Rad, y = Density))+
-  #   geom_smooth() + theme_bw() + ggtitle("Number of points above 2*sigma of original rotation")
-  # 
-  # density
-  # 
-  # 
-  # RES <- cbind.data.frame("Rad" = range.ang, "Density" = res)
-  # 
-  # #taken from https://stackoverflow.com/questions/6836409/finding-local-maxima-and-minima
-  # inflect <- function(x, threshold = 1){
-  #   up   <- sapply(1:threshold, function(n) c(x[-(seq(n))], rep(NA, n)))
-  #   down <-  sapply(-1:-threshold, function(n) c(rep(NA,abs(n)), x[-seq(length(x), length(x) - abs(n) + 1)]))
-  #   a    <- cbind(x,up,down)
-  #   list(minima = which(apply(a, 1, min) == a[,1]), maxima = which(apply(a, 1, max) == a[,1]))
-  # }
-  # 
-  # 
-  # ggres <- ggplot_build(density)$data[[1]]
-  # infs <- inflect(ggres$y)
-  # rads <- ggres$x[infs$maxima]
-  # 
-  # #######
-  # 
-  # maxima.ang <- rads
-  # 
-  # ###
-  # 
-  # i <- NULL
-  # # L_R <- data.frame()
-  # sPLS_maxima_cands <- list()
-  # 
-  # for(i in 1:length(maxima.ang)){
-  #   
-  #   
-  #   ang <- maxima.ang[i]
-  #   
-  #   rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = TRUE) #clockwise rotation
-  #   loadings_r <- as.data.frame(t(apply(loadings_r_baits[,c("comp1","comp2")],1,rotate, y = rot.mat)))
-  #   colnames(loadings_r) <- c("comp1","comp2")
-  #   # L_R <- rbind(L_R,loadings_r)
-  #   sPLS_maxima_cands[[i]] <- loadings_r[order(loadings_r$comp1, decreasing = TRUE),]
-  #   
-  # }
-  
+ 
   sPLS_maxima_cands <- list(sPLS_bait_cands)
   
   Fref2 <- Fref[-which(Fref$Feature %in% baits),]
@@ -2369,142 +2159,6 @@ MASCARA_DEV <- function(resids,ref, baits){
 }
 
 
-
-
-# # ATTEMPT at average bait cosine similarity calculations
-# bait_avg <- colMeans(PCD$rotation[1997:2000,1:4])
-# barplot(t(rbind(PCD$rotation[1989:2000,1:4], bait_avg)))
-# 
-# 
-# loadings_4_cosine <- t(rbind(PCD$rotation[,1:4], bait_avg))
-# 
-# cos_sim <- cosine(loadings_4_cosine)
-# 
-# #calculate cosine similarity of baits and other features
-# m_c <- melt(cos_sim)
-# colnames(m_c)[3] <- "cosine_sim"
-# 
-# 
-# m_c <- m_c[which(m_c$Var1 == "bait_avg"),]
-# m_c <- m_c[order(m_c$cosine_sim, decreasing = TRUE),]
-
-
-#modified from MetStat
-# ASCA.GetSummary <- {
-#   function (asca, quietly = FALSE) 
-#   {
-#     summaryPCA <- matrix(NA, nrow = length(asca$ee.names) + 1, 
-#                          ncol = 10)
-#     rownames(summaryPCA) <- c("data", asca$ee.names)
-#     colnames(summaryPCA) <- paste("PC", 1:10, sep = "")
-#     relevant.pcs <- which(asca$svd$var.explained[1:10] > 0.01)
-#     max.pc <- 0
-#     for (i in relevant.pcs) {
-#       max.pc <- max(max.pc, i)
-#       summaryPCA[1, i] <- asca$svd$var.explained[i]
-#     }
-#     ee.index <- 2
-#     for (ee in asca$ee.names) {
-#       relevant.pcs <- which(asca[[ee]]$svd$var.explained[1:10] > 
-#                               0.01)
-#       for (i in relevant.pcs) {
-#         max.pc <- max(max.pc, i)
-#         summaryPCA[ee.index, i] <- asca[[ee]]$svd$var.explained[i]
-#       }
-#       ee.index <- ee.index + 1
-#     }
-#     summaryPCA <- summaryPCA[, 1:max.pc, drop = FALSE]
-#     summarySSQ <- matrix(NA, nrow = 1, ncol = length(asca$ee.names) + 
-#                            2)
-#     rownames(summarySSQ) <- "Contribution to ssq"
-#     colnames(summarySSQ) <- c("Overall means", asca$ee.names, 
-#                               "Residuals")
-#     summarySSQ[1, 1] <- asca$ssq.mean/asca$ssq
-#     ee.index <- 2
-#     for (ee in asca$ee.names) {
-#       summarySSQ[1, ee.index] <- asca[[ee]]$ssq/asca$ssq
-#       ee.index <- ee.index + 1
-#     }
-#     summarySSQ[1, dim(summarySSQ)[2]] <- asca$ssq.remainder/asca$ssq
-#     summarySSQCentered <- matrix(NA, nrow = 1, ncol = length(asca$ee.names) + 
-#                                    1)
-#     rownames(summarySSQCentered) <- "Contribution to ssq"
-#     colnames(summarySSQCentered) <- c(asca$ee.names, "Residuals")
-#     ee.index <- 1
-#     for (ee in asca$ee.names) {
-#       summarySSQCentered[1, ee.index] <- asca[[ee]]$ssq/(asca$ssq - 
-#                                                            asca$ssq.mean)
-#       ee.index <- ee.index + 1
-#     }
-#     summarySSQCentered[1, dim(summarySSQCentered)[2]] <- asca$ssq.remainder/(asca$ssq - 
-#                                                                                asca$ssq.mean)
-#     if (!quietly) {
-#       cat("Variance explained per principal component (if >1%):\n")
-#       for (r in 1:dim(summaryPCA)[1]) {
-#         if (r == 1) {
-#           cat(paste("Whole data set \t", sep = ""))
-#         }
-#         else if (nchar(rownames(summaryPCA)[r]) == 1) {
-#           cat(paste("Factor ", rownames(summaryPCA)[r], 
-#                     "     \t", sep = ""))
-#         }
-#         else {
-#           cat(paste("Interaction ", rownames(summaryPCA)[r], 
-#                     "\t", sep = ""))
-#         }
-#         for (c in 1:dim(summaryPCA)[2]) {
-#           varExplained <- paste(colnames(summaryPCA)[c], 
-#                                 ": ", formatC(summaryPCA[r, c] * 100, digits = 2, 
-#                                               format = "f"), "% ", sep = "")
-#           varExplained <- paste(varExplained, paste(rep(" ", 
-#                                                         (13 - nchar(varExplained))), collapse = ""))
-#           cat(varExplained)
-#         }
-#         cat("\n")
-#       }
-#       cat("\n")
-#       cat("Percentage each effect contributes to the total sum of squares:\n")
-#       for (c in 1:dim(summarySSQ)[2]) {
-#         if (c == 1) {
-#           cat(paste("Overall means  \t", sep = ""))
-#         }
-#         else if (c == dim(summarySSQ)[2]) {
-#           cat(paste("Residuals      \t", sep = ""))
-#         }
-#         else if (nchar(colnames(summarySSQ)[c]) == 1) {
-#           cat(paste("Factor ", colnames(summarySSQ)[c], 
-#                     "     \t", sep = ""))
-#         }
-#         else {
-#           cat(paste("Interaction ", colnames(summarySSQ)[c], 
-#                     "\t", sep = ""))
-#         }
-#         cat(paste(formatC(summarySSQ[1, c] * 100, digits = 2, 
-#                           format = "f"), "%\n", sep = ""))
-#       }
-#       cat("\n")
-#       cat("Percentage each effect contributes to the sum of squares of the centered data:\n")
-#       for (c in 1:dim(summarySSQCentered)[2]) {
-#         if (c == dim(summarySSQCentered)[2]) {
-#           cat(paste("Residuals      \t", sep = ""))
-#         }
-#         else if (nchar(colnames(summarySSQCentered)[c]) == 
-#                  1) {
-#           cat(paste("Factor ", colnames(summarySSQCentered)[c], 
-#                     "     \t", sep = ""))
-#         }
-#         else {
-#           cat(paste("Interaction ", colnames(summarySSQCentered)[c], 
-#                     "\t", sep = ""))
-#         }
-#         cat(paste(formatC(summarySSQCentered[1, c] * 100, 
-#                           digits = 2, format = "f"), "%\n", sep = ""))
-#       }
-#       cat("\n")
-#     }
-#     list(summary.pca = summaryPCA, summary.ssq = summarySSQ, summary.centred.ssq = summarySSQCentered)
-#   }
-# }
 
 
 

@@ -6,6 +6,7 @@ This repo contains the code to reproduce the MASCARA manuscript.
 Some figures are generated with additional scripts, the png files are inlcuded here.
 The scripts used to create them are contained in order in /run_first.
 
+
 Dependencies managed with renv, open R and set working directory to ~/MASCARA/R, run the following snippet to restore the environment:
 
 ```

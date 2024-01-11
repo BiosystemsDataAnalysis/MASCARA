@@ -1,3 +1,20 @@
+MASCARA <- function(resids, baits){
+  #target projection
+  spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                          resids[,which(colnames(resids) %in% baits)], ncomp = 2)
+  
+  #####
+  y <- colMeans(spls_res$Yloadings)
+  U <- spls_res$projection
+  UTP <- (dot(t(U),y)/dot(y,y))
+  
+  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
+  
+  return(list(sPLS_bait_cands,UTP,spls_res,y))
+}
+
+
+
 MASCARA4_test_1 <- function(resids, baits, spikes){
   #MIXOMICS
   spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], 
