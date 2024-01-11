@@ -31,6 +31,8 @@ library(knitr)
 knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, root.dir=here()
 # install.pacakges()
 
+
+
 # if(!"renv" %in% installed.packages()[,1]){
 #   install.packages("renv")
 # }
@@ -41,7 +43,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, 
 # renv::dependencies()
 # renv::status()
 
-#bibliography: "`r rbbt::bbt_write_bib('MASCARA_refs.json', overwrite = TRUE, filter = ("accessed"))`"
+#bibliography: "`r rbbt::bbt_write_bib('MASCARA_refs.json', overwrite = TRUE)`"
 
 # Fred T.G. White^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands, Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands *], Anna Heintz-Buschart^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Lemeng Dong^[Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Harro J. Bouwmeester^[Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Johan A. Westerhuis^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Age K. Smilde^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands]
 
@@ -67,7 +69,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, 
 
 
 ```{r , echo=FALSE, include=FALSE}
-#SOURCE FUNCTIONS FROM EXTERNAL FILE
 source("DATA_SIM_FUNCS.R")
 ```
 
@@ -112,10 +113,7 @@ library(ggbreak)
 library(rhmmer)
 ```
 
-```{r}
-# renv::snapshot()  #change this
 
-```
 
 # Abstract
 
@@ -188,7 +186,6 @@ META$growth_condition[which(META$growth_condition == "-1")] <- "P-"
 ```{r, echo = F}
 META <- META[!duplicated(paste0(META$growth_condition, META$time)),]
 rownames(META) <- NULL
-# kable(META, format = "simple") #replace with CANDTAB like
 
 
 fill <- rep(c("grey95", "grey90"), nrow(META))
@@ -205,39 +202,9 @@ META <- gtable::gtable_add_grob(META, title,1,1,1,ncol(META))
 rdo <- readRDS("Data_Haider/RICE_DATA_OVERVIEW.RDS")
 levels(rdo[[2]]$data$time) <- c("1","3","7","8")
 
-
-# rdo <- list(META,rdo[[1]],rdo[[2]],rdo[[3]])
-# plot_grid(META)
-# # grid.newpage()
-# # grid.draw(META)
 ```
 
-```{r, echo = F}
-# h <- readRDS("heat_comp.RDS")
-# levels(h[[2]]$time) <- c("1","3","7","8")
-# 
-# ann_colours <- list(g_c = c("P-" = "#F8766D","P+" = "lightblue"),
-#                     time = c("1" = "#fde725","3" = "#35b779","7" = "#31688e","8" = "#440154"))
-# 
-# heat <- pheatmap::pheatmap(t(scale(t(h[[1]]))),  #
-#                              cluster_rows = T,
-#                              cluster_cols = F, 
-#                              show_rownames = T, 
-#                              show_colnames = F,
-#                              annotation_col = h[[2]],
-#                            annotation_colors = ann_colours,
-#                            treeheight_row = 10,
-#                            fontsize = 8,
-#                              # annotation_row = anno,
-#                              main = "Strigolactone Gene Expression",silent = T)
-#   
-#   # heat
-#   library(ggplotify)
-#   heat2 <- as.ggplot(heat) + theme(plot.title = element_text(face = "plain"))
 
-# heat2 <- readRDS("heatmap_MASCARA_Fig_2.RDS")
-
-```
 
 ## RNAseq - Rice strigolactone dataset @haiderTranscriptomeAnalysisPhosphate2023
 
@@ -266,8 +233,6 @@ heat2
 
 ```{r ASCA-1, echo = F, out.width = '100%', fig.cap=c("Scores and loadings of the ASCA model of the combined effect (condition + condition:time interaction), model indicates samples and genes relative positions in the designed variance. *g_c* indicates growth condition, *time* indicates days after starvation induction.")}
 knitr::include_graphics("rice_s_l.png")
-
-
 ```
 
 \twocolumn
@@ -294,7 +259,6 @@ knitr::include_graphics("Sim_SL_diagram_simplified.png")
 ```
 
 
-<!-- The simulated data is created by simulating score and loading values (as in Figure \@ref(fig:simOverview)) for the combined effect ($\alpha + \alpha\beta$) ) explaining the difference in time profiles of the P+ and P- condition and the main time effect $\beta$, as well as, structured ambient variance ($S$). This is to mimic variance due to gene expression as a function of growth condition and time as well as variance due to coexpression of genes in the same  pathway on top of this experimentally induced DE variance. -->
 
 ## Data simulation 1: Combined effect size and number of differential genes
 
@@ -346,8 +310,6 @@ X_funced_test2 <- Create_Core(nreps = 3, meta, irr_spikes = TRUE, struc_resid = 
 
 
 <!-- The issue to address is the presence of many differential URPs; those that have strong between group correlations but no within group correlation. Here these differential genes relate  to the yellow bar in Figure \@ref(fig:simOverview). We incrementally increase the number of non-zero values and decrease the number of 0 values, which in figure \@ref(fig:simOverview) relates to increasing the size of the yellow bar, as well as varying the size (as quantified by the Frobenius norm) of the combined effect matrix through the scalar parameter *d* below; -->
-
-
 
 
 
@@ -429,16 +391,6 @@ ref$Effect <- factor(ref$Effect, levels = c("Low PC1", "Medium PC1", "High PC1",
 ### Ranked correlations
 
 Pearson's correlation coefficient $r_{b\tilde{j}}$ is calculated between all bait genes (b = 1..B) and all other genes ($\tilde{j} = 1...\tilde{J}$). Ranks $\tilde{r}_{b\tilde{j}}$ are assigned for each $r_{b\tilde{j}}$ such that the highest correlation for each bait gene b receives the lowest rank. These ranks are averaged across all baits B (see supplementary equation \@ref(eq:rankcor)).
-
-
-
-<!-- For example the correlation between a SL gene $j_{sl}$ and a non-SL gene $j_q$ is calculated as: -->
-
-<!-- \begin{equation} -->
-<!-- \begin{aligned} -->
-<!--   r_{j_{sl}j_{q}} = \frac{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl}) (y_{ij_{q}} - \bar{y}_j_{q})}{\sqrt{\sum_{i=1}^{I} (y_{ij_{sl}} - \bar{y}_j_{sl})^2 \sum_{i=1}^{I} (y_{ij_{q}} - \bar{y}_j_{q})^2}} -->
-<!-- \end{aligned}(\#eq:Pearson) -->
-<!-- \end{equation} -->
 
 
 ### ASCA+
@@ -579,13 +531,6 @@ MASCARA combines the effect estimation with GLM (from ASCA+) with PLS2. The meth
 The genes are ranked based on target projection (@kvalheimInterpretationPartialLeast2010) of the loadings $\mathbf{P}$ onto the mean vector of the bait loadings $\mathbf{Q}$ in 2 components: $\mathbf{\bar{q}} = \begin{bmatrix} \bar{q}_1 \\ \bar{q}_2 \end{bmatrix}$ where $\bar{q}_k$ is the mean of the $k^{th}$ component of the PLS2 model. The target projected loadings $\mathbf{P}_{TP}$ are calculated such that $\mathbf{P}_{TP} = \left( \frac{\mathbf{P} \cdot \mathbf{\bar{q}}}{\|\mathbf{\bar{q}}\|^2} \right)$. Higher values in the target projection equate to stronger positive associations with the center of the baits. Large negative values can also be interesting candidates for strong negative associations, although non positive associations are not considered here. This approach allows a general direction in the PLS space to be defined by multiple baits and assumes that these baits are highly correlated with one another. 
 
 
-<!-- The MASCARA pipeline in exemplified in Figure \@ref(fig:MASCARAOVERVIEW). -->
-
-
-<!-- ```{r MASCARAOVERVIEW, echo = F, fig.cap="MASCARA pipeline overview"} -->
-<!-- a <- knitr::include_graphics("MASCARA_Pipeline_overview.png") -->
-<!-- a -->
-<!-- ``` -->
 
 
 ## Performance evaluation; Log2 geometric mean rank
@@ -621,8 +566,6 @@ res_ASCAplus_nb <- ASCA_decompose(d = m[,1:2], x = X_funced_test2[[1]],
 
   newdata <- res_ASCAplus_nb$decomposition$growth_condition + res_ASCAplus_nb$decomposition$`growth_condition:time` + res_ASCAplus_nb$residuals
 
-  #this predict method does matrix multiplication of the input (new data) and the rotation (loading) matrix
-  #projects the data into the PCA space
   PCDE <- predict(PCD, newdata)
   # PCDE <- cbind(m[,1:2], PCDE)
 
@@ -631,7 +574,6 @@ res_ASCAplus_nb <- ASCA_decompose(d = m[,1:2], x = X_funced_test2[[1]],
 
 ```{r, echo = F}
 a_c.PCD <- PCD
-
 ```
 
 ```{r, echo = F}
@@ -662,7 +604,6 @@ theme1 <- ttheme_default(core = list(
 
 candtab <- gridExtra::tableGrob(CAND_TAB, rows = NULL, theme = theme1)
 
-# f <- F1_plot(ASCA_cands, baits, 500)[[2]]
 ```
 
 
@@ -946,10 +887,7 @@ baits <- paste0(c("Os11t0587000","Os04t0550600","Os01t0746400","Os01t0700900"),"
 baits2 <- c("Os01t0700300-00", "Os02t0817900-01")  # identified methyltransferases
 
 
-# #remove RP samples
-# X <- X[-which(meta$growth_condition == "PR"),]
-# meta <- meta[-which(meta$growth_condition == "PR"),]
-# 
+
 meta$time <- as.character(meta$time)
 
 meta$time[which(meta$time == "8")] <- "1"
@@ -959,7 +897,6 @@ meta$time[which(meta$time == "15")] <- "8"
 
 
 
-# REF <- readRDS("ref4ASCA_rice.RDS")
 ref <- cbind.data.frame(Feature = colnames(X), feature = colnames(X), Baits = colnames(X))
 
 REF <- fread("Rice_Annotation/IRGSP-1.0_representative_annotation_2022-09-01.tsv",sep = "\t", header = T)
@@ -978,7 +915,6 @@ SL_ref <- SL_ref[-which(SL_ref$Feature %in% c("Os01t0701400-01","Os03t0203200-01
 
 PSI_ref <-read.table("Rice_Annotation/PSI_genes.txt", sep = "\t", header = T)
 
-# baits <- SL_ref$feature
 
 ref$Baits[-which(ref$Baits %in% c(baits,baits2,SL_ref$Baits))] <- "non_pathway"
 ref$Baits[which(ref$Baits %in% baits)] <- "bait"
@@ -1211,107 +1147,6 @@ colnames(mt)[3] <- "Correlation"
 dens <- ggplot(mt, aes(Correlation, colour = group)) + geom_density() + theme_bw()
 dens
 ```
-
-
-```{r extra plot making}
-# ASCA_cands3 <- ASCA_cands2[-which(rownames(ASCA_cands2) %in% c("Os06t0570600-00","Os06t0570566-00", "Os09t0321200-00","Os06t0651900-01", "Os10t0444566-00")),]
-# h <- readRDS("heat_comp.RDS")
-# levels(h[[2]]$time) <- c("1","3","7","8")
-# 
-# # make row annotation
-# 
-# row_ann <- data.frame("Feature" = rep(c("SL","Other DE"),each = 9))
-# rownames(row_ann) <- c(pathway,rownames(ASCA_cands3)[1:9])
-# 
-# ann_colours <- list(g_c = c("P-" = "#F8766D","P+" = "lightblue"),
-#                     time = c("1" = "#fde725","3" = "#35b779","7" = "#31688e","8" = "#440154"),
-#                     Feature = c("SL" = "purple", "Other DE" = "lightgreen"))
-# 
-# h[[1]] <- t(X[,c(pathway,rownames(ASCA_cands3)[1:9])])  #psi_ref[,1]
-# 
-# heat <- pheatmap::pheatmap(t(scale(t(h[[1]]))),  #
-#                              cluster_rows = F,
-#                              cluster_cols = F,
-#                              show_rownames = T,
-#                              show_colnames = F,
-#                              annotation_col = h[[2]],
-#                            annotation_row = row_ann,
-#                            annotation_colors = ann_colours,
-#                            treeheight_row = 10,
-#                            fontsize = 8,
-#                              # annotation_row = anno,
-#                              main = "Scaled Gene Expression",silent = T)
-# 
-#   # heat
-#   library(ggplotify)
-#   heat2 <- as.ggplot(heat) + theme(plot.title = element_text(face = "plain"))
-#
-#   saveRDS(heat2, "heatmap_MASCARA_Fig_2.RDS")
-
-  
-# 
-# qqplot <- function(data, meta, ...){
-# 
-#   df <- cbind.data.frame(meta,data)
-# 
-#   df$time <- factor(df$time, levels = unique(meta$time))
-#   df$growth_condition <- factor(df$growth_condition)
-# 
-# 
-#   ggplot(df, ...) +
-#     geom_point() +
-#     theme_bw()
-# 
-# 
-# }
-# 
-# meta$time <- rep(c(1,3,7,8), each = 3, 2)
-# 
-# cand_b <- PSI_cands[10]
-# cand_w <- baits[3]
-# 
-# cor_tw <- round(cor(X[,which(colnames(X) %in% cand_w)], X[,which(colnames(X) %in% baits[4])]), digits = 2)
-# 
-# cor_tb <- round(cor(X[,which(colnames(X) %in% cand_b)], X[,which(colnames(X) %in% baits[4])]), digits = 2)
-# 
-# cor_rw <- round(cor(res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_w)], res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]), digits = 2)
-# 
-# cor_rb <- round(cor(res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_b)], res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]), digits = 2)
-# 
-# 
-# within <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% cand_w)],
-#                         "Bait" = X[,which(colnames(X) %in% baits[4])]),meta,
-#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_w) + labs(title = paste0("r = ",cor_tw))
-# 
-# PSI_cands <- rownames(ASCA_cands[which(rownames(ASCA_cands) %in% psi_ref[,1]),])
-# PSI_cands <- head(rownames(ASCA_cands[-which(rownames(ASCA_cands) %in% pathway),]),20)
-# 
-# 
-# between <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% cand_b)],
-#                         "Bait" = X[,which(colnames(X) %in% baits[4])]),meta,
-#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_b) + labs(title = paste0("r = ",cor_tb))
-# 
-# # within + between + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A')) + plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
-# 
-# 
-# 
-# 
-# within_r <- qqplot(cbind.data.frame("Candidate" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_w)],
-#                         "Bait" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]),meta,
-#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_w)   + labs(title = paste0("r = ",cor_rw))#, alpha = (16- as.numeric(growth_condition))
-# 
-# 
-# between_r <- qqplot(cbind.data.frame("Candidate" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_b)],
-#                         "Bait" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]),meta,
-#        aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_b)  + labs(title = paste0("r = ",cor_rb))
-# 
-# (within + between)/(within_r + between_r) + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1')) #+ plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
-
-
-
-#^^ C:/Users/fwhite/Documents/within_between_example_2.png
-```
-
 
 ```{r}
 all <- cbind.data.frame(meta[,c("growth_condition","time")], X)

@@ -17,11 +17,21 @@ library(cowplot)
 library(graphlayouts)
 library(gganimate)
 library(animation)
+library(gASCA)
+library(matrixStats)
+library(patchwork)
+
+source("../DATA_SIM_FUNCS.R")
 ```
 
 ```{r}
 # font_import() # download once 
 #windowsFonts() # to check which are loaded
+
+
+renv::status()
+
+
 ```
 
 ```{r}
@@ -34,17 +44,33 @@ library(psych)
 
 #
 # plot residuals and full (with tweaks for problem demonstration)
+baits <- paste0("X_",c(1985:1988))   #501:510
+spikes <- paste0("X_",c(1989:2000))
 
 baits <- c(baits,spikes[1:5])
 spikes <- spikes[-c(1:5)]
 
+
+meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
+colnames(meta) <- c("growth_condition","time","interaction")
+meta <- as.data.frame(apply(meta,2,factor))  #9
+
+Experiment_responders <- 30
+
+
+sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, 
+                        EffectSize = c(X_a_ab = 5, time = 1, E = 1, mu = 1, Struc_E = 0.4),    # E = 10, Struc_E = 1
+                        struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
+                        b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, Experiment_responders = Experiment_responders,
+                        struc_seed = 127, score_plot = FALSE, plot = FALSE)  #12
+
+
+ar <- ASCA(sim_data[[1]], m = meta, Baits = baits, spikes = spikes, ncands = ncands, distance_calc = FALSE, Return_Model = FALSE)
+
 residuals <- ar[[3]]
 data <- sim_data[[1]]
 
-
 cand_vals <- residuals[,1970:2000]    #rgs[which(rownames(rgs) %in% names(g_b)[1:50]),]
-
-
 adj <- cor(cand_vals)
 
 rownames(adj) <- colnames(cand_vals)

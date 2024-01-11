@@ -506,7 +506,7 @@ line <- colMeans(yloadings)
 
 
   
-  #adapted from https://stackoverflow.com/questions/1897704/angle-between-two-vectors-in-r
+  #function from https://stackoverflow.com/questions/1897704/angle-between-two-vectors-in-r
   angle <- function(x,y){
     
     x <- c(as.matrix(x))

@@ -12,14 +12,11 @@ output:
 ```{r setup, include=FALSE}
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE, warning = F, message = F, echo = F)
-#pdf_document
-#powerpoint_presentation
 ```
 
 
 
 ```{r , echo=FALSE, include=FALSE}
-#SOURCE FUNCTIONS FROM EXTERNAL FILE
 source("DATA_SIM_FUNCS.R")
 ```
 
@@ -240,8 +237,6 @@ rownames(col_ann) <- col_ann$ID
 col_ann <- col_ann[,-c(1)]
 colnames(col_ann)[1] <- "g_c"
 
-# png("MASCARA_heatmap.png")
-
 heat <- pheatmap::pheatmap(t(scale(t(h))),  #
                              cluster_rows = F,
                              cluster_cols = F,
@@ -252,19 +247,16 @@ heat <- pheatmap::pheatmap(t(scale(t(h))),  #
                            annotation_colors = ann_colours,
                            treeheight_row = 10,
                            fontsize = 8,
-                             # annotation_row = anno,
-                             main = "Scaled Gene Expression",silent = T)
+                           main = "Scaled Gene Expression",silent = T)
 
-  # # heat
-  # library(ggplotify)
-  # heat2 <- as.ggplot(heat) + theme(plot.title = element_text(face = "plain"))
+png("MASCARA_heatmap.png", res = 150, height = 960, width = 960)
+grid::grid.newpage()
+grid::grid.draw(heat$gtable)
+dev.off()
 
-  # saveRDS(heat2, "heatmap_MASCARA_Fig_2.RDS")
 
-# png("MASCARA_heatmap.png")
-# heat
-# dev.off()
-
+grid::grid.newpage()
+grid::grid.draw(heat$gtable)
 
 ```
 
@@ -396,25 +388,7 @@ a_c.PCD <- PCD
 SL <- SL_plot(a_c.PCD, meta)
 ```
 
-# Background 
 
-The biological aim of the dataset is to find novel strigolactone (SL) genes. SLs are induced by phosphate starvation, but there are also a lot of more general phosphate deficiency related genes (PSIs) that are strongly affected by the experimental design. 
-
-In this case where SLs are the pathway of interest that can make it difficult to detect novel pathway genes, since the experimental design is affecting the pathway of interest along with many other genes. 
-
-Some SL genes are already characterised, we should use these to find novel pathway genes.
-
-
-
-# Methodological aim
-
-Find method that can preferentially detect members of a sub-network rather than more general experiment responders. 
-
-The genes should respond to the experiment but also show some experiment independent association.
-
-
-
-# Data overview
 
 ```{r, echo = F, fig.cap="Top: distribution and mean sd relationship. Bottom: scores and loadings of the main effect; growth condition + interaction"}
 ve1 <- paste0(round(summary(a_c.PCD)$importance[2,1:2] * 100, digits = 2), "%")
@@ -430,10 +404,8 @@ loadingplot <- function(df, meta, ve, ref, ...){
 
     xlab(paste0("PC1 ",ve[1])) +
     ylab(paste0("PC2 ",ve[2])) +
-    # geom_point(data = df[which(df$Baits == "Other"),], alpha = 0.5) +
-    # geom_point(data = df[which(df$Baits == "POI"),], alpha = 1) +
-    # geom_point(data = df[which(df$Baits == "URP"),], alpha = 1) +
-geom_point(data = df) +
+
+geom_point(data = df, size = 5) +
     scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
     guides(shape = guide_legend(override.aes = list(size = 0.5))) +
     ggtitle("Loadings") +
@@ -447,7 +419,7 @@ l <- loadingplot(a_c.PCD$rotation, meta, ve = ve1, ref = ref, aes(x = PC1,y = PC
 
 
 
-l <- l + scale_color_manual(values = c("Other" = "black", "POI" = "purple","URP" = "green"))# + scale_alpha(c(0.1,1,1))
+l <- l + scale_color_manual(values = c("Other" = "black", "POI" = "purple","URP" = "green")) + coord_fixed() + theme(aspect.ratio = 1,text=element_text(size=18))
 
 
 
@@ -463,13 +435,15 @@ scoreplot <- function(df, meta, ve, ...){
   
   
   ggplot(df, ...)+
-    geom_point() +
+    geom_point(size = 5) +
     xlab(paste0("PC1 ",ve[1])) +
     ylab(paste0("PC2 ",ve[2])) + 
-    theme_bw()
+    theme_bw() 
+    
   
 }
-s <- scoreplot(PCDE, meta2, ve1, aes(x= PC1, y = PC2, colour = g_c, shape = time)) + ggtitle("Scores") 
+s <- scoreplot(PCDE, meta2, ve1, aes(x= PC1, y = PC2, colour = g_c, shape = time)) + ggtitle("Scores")
+s <- s + coord_fixed() + theme(aspect.ratio = 1, text=element_text(size=18))
 
 #+ guide_area()# + plot_layout(design = design)
 qq <- qqplot(newdata, meta, aes(x=X_2000, y= X_1999, colour = growth_condition, shape = time))
@@ -494,567 +468,133 @@ theme1 <- ttheme_default(core = list(
 
 candtab <- gridExtra::tableGrob(CAND_TAB, rows = NULL, theme = theme1)
 
-(dist_norm + plot_normal)/(s + l)
+# (dist_norm + plot_normal)/(s + l)
 
 ```
 
-
-
-<!-- ```{r} -->
-<!-- png("rice_s_l.png") -->
-<!-- (s + l) -->
-<!-- dev.off() -->
-<!-- ``` -->
-
-
-
-
-
-```{r, include = F}
-source("DATA_SIM_FUNCS.R")
-
-pcd <- prcomp(res_ASCAplus_nb$residuals)
-residual_cands <- get_ASCA_cands(pcd)
-
-#HERE
-
-image(cor(res_ASCAplus_nb$residuals[,c(baits,baits2)]))
-```
-
-```{r, inlcude = FALSE}
-
-minT <-  res_ASCAplus_nb$decomposition$time
-tcd <- prcomp(minT)
-
-newdata <- res_ASCAplus_nb$decomposition$time + res_ASCAplus_nb$residuals
-PCDE <- predict(PCD, newdata)
-
-tcd <- prcomp(res_ASCAplus_nb$decomposition$time + res_ASCAplus_nb$residuals)
-
-
-
-
-```
 
 
 ```{r}
-#do permutation tests to see if the correlations in the "non experimentally interesting" data are significant between the strigolactone genes compared to random sets.
+(s + l)
+
+png("rice_s_l.png", width = 960, height = 480)
+(s + l)
+dev.off()
+```
+
+```{r}
+
+get_ASCA_cands2 <- function(PCD, meta, distance_calc= FALSE, baits = NULL, spikes = NULL, ret_candN = nrow(PCD$rotation)){
+  #############
+  
+  if(distance_calc== TRUE){
+    
+    cands <- ranked_dist(baits,PCD)
+    
+  }else{
+    absload <- abs(data.matrix(PCD$rotation[,1:2])) %*% diag(summary(PCD)$importance[2,1:2])
+    combscore <- rowSums(absload[,1:2])
+    
+    
+    orderedload <- cbind(combscore, PCD$rotation[,1:2])
+    cands <- as.data.frame(orderedload[order(orderedload[,1], decreasing = T),])
+    colnames(cands) <- c("VIP", "PC1","PC2")
+    
+    cands <- round(cands[1:ret_candN,], 4)
+    
+    
+  }
+  
+  return(cands)
+  
+  
+}
 
 pathway <- ref[which(ref$Baits == "POI"),1]
 
-p_n_b <- pathway[-which(pathway %in% baits)]
+
+ASCA_cands2 <- get_ASCA_cands2(a_c.PCD)
+ASCA_cands2 <- ASCA_cands2[which(ASCA_cands2[,2] < 0),]
+ASCA_cands2 <- ASCA_cands2[order(ASCA_cands2[,2]),]
+ASCA_cands2 <- ASCA_cands2[-which(rownames(ASCA_cands2) %in% pathway),]
+
+ASCA_cands3 <- ASCA_cands2[-which(rownames(ASCA_cands2) %in% c("Os06t0570600-00","Os06t0570566-00", "Os09t0321200-00","Os06t0651900-01", "Os10t0444566-00")),]
 
 
-# sum(cor(res_ASCAplus_nb$residuals[,pathway]))
-# 
-# psi_ref <- PSI_ref[which(PSI_ref[,1] %in% colnames(res_ASCAplus_nb$residuals)),]
 
-cor_val <- function(x,y){
-  
-  y <- y[which(y %in% colnames(x))]
-  res <- (sum(cor(x[,y]))- length(y))/2   /length(y)
-  return(res)
+qqplot <- function(data, meta, ...){
+
+  df <- cbind.data.frame(meta,data)
+
+  df$time <- factor(df$time, levels = unique(meta$time))
+  df$growth_condition <- factor(df$growth_condition)
+
+
+  ggplot(df, ...) +
+    geom_point() +
+    theme_bw()
+
 
 }
 
-p_cor <- cor_val(res_ASCAplus_nb$residuals,sls)
-phos_cor <- cor_val(res_ASCAplus_nb$residuals, URPS)
-
-phos_p_cor <- cor_val(res_ASCAplus_nb$residuals, c(sls,URPS))
-
-
-rand_cor <- c()
-i <- NULL
-for(i in 1:1000){
-
-  rc <- cor_val(res_ASCAplus_nb$residuals, sample(colnames(res_ASCAplus_nb$residuals),13))
-  rand_cor <- c(rand_cor, rc)
-  
-  
-  }
-```
-
-The pathway genes are responding to the experiment, but they are not the only responders, nor are they the strongest responders. Therefore it is interesting to see if there is any significant correlation in the residuals of the ASCA model. 
-
-# Results
-
-## Permutation test: average correlations in residuals
-
-
-
-```{r, fig.cap="red: pathway genes, blue: General phosphate genes"}
-hist(rand_cor, xlim = c(-0.5, 2), main = "Residual correlation permutation test", xlab = "Average correlation")
-abline(v = c(p_cor,phos_cor), col = c("red","blue"))
-# abline(v = phos_p_cor)
-
-```
-
-The SL genes (in red) have a much higher average correlation than a random set in the residuals, however this is also true for the PSIs (in blue).
-
-```{r}
-
-all <- cbind.data.frame(meta[,c("growth_condition","time")], X)
-residuals <- cbind.data.frame(meta[,c("growth_condition","time")], res_ASCAplus_nb$residuals)
-```
-
-
-```{r}
-#get cands from residuals
-
-rPCD <- prcomp(data.matrix(residuals[,-c(1:2)]))
-
-
-# residual_cands_all <- ranked_dist(pathway, rPCD)
-# residual_cands_phos <- ranked_dist(PSI_ref[,1], rPCD)
-
-
-
-```
+meta$time <- rep(c(1,3,7,8), each = 3, 2)
 
 
 
 
-```{r}
-#filter residuals for only n genes that show treatment effect i.e. set VIP cutoff value
-#how to do this with density?...
+PSI_ref <-read.table("Rice_Annotation/PSI_genes.txt", sep = "\t", header = T)
+psi_ref <- PSI_ref[which(PSI_ref[,1] %in% colnames(res_ASCAplus_nb$residuals)),]
 
 
-#first quick and dirty attempt with top n candidates  -  then add density 
-
-cutoff <- round(quantile(c(1:nrow(ASCA_cands)),0.1))
-res_filt <- residuals[,c(1:2,which(colnames(residuals) %in% rownames(ASCA_cands)[1:cutoff]))]
-
-rpcd <- prcomp(data.matrix(res_filt[,-c(1:2)]))
-
-ref$Baits <- as.character(ref$Baits)
-# ref$Baits[which(ref$Feature %in% PSI_ref[,1])] <- "PSI"
-ref$Baits <- factor(ref$Baits, levels = c("Other","POI","URP"))
-
-Fref <- ref[match(rownames(rpcd$rotation),ref$Feature),]
-
-```
-
-For the following analyses the data is prefiltered using the top 10% VIPs of the main effect model, since we expect the pathway to be induced by the experimental design.
+PSI_cands <- rownames(ASCA_cands[which(rownames(ASCA_cands) %in% psi_ref[,1]),])
+PSI_cands <- head(rownames(ASCA_cands[-which(rownames(ASCA_cands) %in% pathway),]),20)
 
 
-## PCA on ASCA residuals
+cand_b <- PSI_cands[10]
+cand_w <- baits[3]
 
-Since there is clearly an experiment independent relationship between the SL genes, it is interesting to see if there is any obvious structure in the residuals.
-The structure relating to the experimental design, in the samples, is not interesting since we should have removed that in the main effect. 
-Here we would like to see if the SL genes show any indication of clustering, and if that is in some way different to the PSIs. 
+cor_tw <- round(cor(X[,which(colnames(X) %in% cand_w)], X[,which(colnames(X) %in% baits[4])]), digits = 2)
 
-```{r}
+cor_tb <- round(cor(X[,which(colnames(X) %in% cand_b)], X[,which(colnames(X) %in% baits[4])]), digits = 2)
 
-plots <- list()
-plots_p <- list()
-i <- NULL
+cor_rw <- round(cor(res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_w)], res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]), digits = 2)
 
-k <- c(1:16)
-l <- k[c(F,T)]
-k <- k[c(T,F)]
+cor_rb <- round(cor(res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_b)], res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]), digits = 2)
 
-importance <- paste0(round(summary(rpcd)$importance[2,] * 100, digits = 2), "%")
 
-for(i in 1:8){
-  
-  
-  
-  
-  plots[[i]] <- loadingplot(rpcd$rotation, meta, baits = Fref$Feature[which(Fref$Baits %in% c("POI","URP"))], c(importance[k[i]], importance[l[i]]), PCs =c(k[i],l[i]),  Fref, aes(x = !!sym(paste0("PC",k[i])),y = !!sym(paste0("PC",l[i])), colour = Baits, label = Description))
+within <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% cand_w)],
+                        "Bait" = X[,which(colnames(X) %in% baits[4])]),meta,
+       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_w) + labs(title = paste0("r = ",cor_tw)) + theme(aspect.ratio = 1)
+
+PSI_cands <- rownames(ASCA_cands[which(rownames(ASCA_cands) %in% psi_ref[,1]),])
+PSI_cands <- head(rownames(ASCA_cands[-which(rownames(ASCA_cands) %in% pathway),]),20)
+
+
+between <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% cand_b)],
+                        "Bait" = X[,which(colnames(X) %in% baits[4])]),meta,
+       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_b) + labs(title = paste0("r = ",cor_tb)) + theme(aspect.ratio = 1)
+
+# within + between + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A')) + plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
 
 
 
-  
-}
-```
+
+within_r <- qqplot(cbind.data.frame("Candidate" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_w)],
+                        "Bait" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]),meta,
+       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_w)   + labs(title = paste0("r = ",cor_rw)) + theme(aspect.ratio = 1)#, alpha = (16- as.numeric(growth_condition))
 
 
-```{r}
-wrap_plots(plots) + plot_layout(guides = "collect")
-```
+between_r <- qqplot(cbind.data.frame("Candidate" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% cand_b)],
+                        "Bait" = res_ASCAplus_nb$residuals[,which(colnames(res_ASCAplus_nb$residuals) %in% baits[4])]),meta,
+       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time)) + xlab(baits[4]) + ylab(cand_b)  + labs(title = paste0("r = ",cor_rb)) + theme(aspect.ratio = 1)
+
+(within + between)/(within_r + between_r) + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1')) #+ plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
 
 
-
-There isn't an obvious way to visually distinguish the two sets. But since the residual correlation analysis showed significant results we can investigate other methods on the residual matrix. 
-
-## sPLS on ASCA residuals
-
-
-
-```{r}
-# resids <- residuals[,-c(1:2)]
-resids <- res_filt[,-c(1:2)]
-spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], resids[,which(colnames(resids) %in% baits)], all.outputs = T)
-
-sPLS_cands <- cbind.data.frame(abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$X, spls_res$loadings$X)
-sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = T),]
-
-importance <- paste0(round(spls_res$prop_expl_var$X * 100, digits = 2), "%")
-
-Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-Fref2 <- Fref2[match(rownames(sPLS_cands),Fref2$Feature),]
-
-
-p <- loadingplot(sPLS_cands, meta, baits = Fref2$Feature[which(Fref2$Baits %in% c("POI","URP"))], 
-            importance, PCs = c(1,2), ref = Fref2, aes(x = comp1, y = comp2, colour = Baits, label = Description))
-
-
-# ggplotly(p)
-
-
+png("within_between_example_2.png", res = 150, height = 960, width = 960)
+(within + between)/(within_r + between_r) + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1')) #+ plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
+dev.off()
 
 
 ```
-
-
-<!-- ```{r} -->
-<!-- #calculating direction of baits to determine direction of candidate selection spls loading space -->
-
-<!-- # loadingplot(sPLS_cands, meta, baits = Fref2$Feature[which(Fref2$Baits %in% c("Pathway","PSI"))],  -->
-<!-- #             importance, PCs = c(1,2), ref = Fref2, aes(x = comp1, y = comp2, colour = Baits, label = Description)) -->
-
-<!-- angles <- rbind.data.frame(spls_res$loadings$Y, colMeans(spls_res$loadings$Y)) -->
-
-<!-- x <- angles[4,] -->
-<!-- y <- angles[5,] -->
-
-<!-- #adapted from https://stackoverflow.com/questions/1897704/angle-between-two-vectors-in-r -->
-<!-- angle <- function(x,y){ -->
-
-<!--   x <- c(as.matrix(x)) -->
-<!--   y <- c(as.matrix(y)) -->
-
-<!--   dot.prod <- x%*%y  -->
-<!--   norm.x <- norm(x,type="2") -->
-<!--   norm.y <- norm(y,type="2") -->
-<!--   theta <- acos(dot.prod / (norm.x * norm.y)) -->
-<!--   return(as.numeric(theta)) -->
-<!-- } -->
-
-
-<!-- angles_loadings <- apply(sPLS_cands[,-1],1,angle, y = y) -->
-
-
-<!-- #define this better -->
-<!-- sPLS_cands <- cbind.data.frame(sPLS_cands, "angle" = angles_loadings, "score" = 3 * sPLS_cands$`abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$X` * (1-angles_loadings)) -->
-
-<!-- sPLS_cands <- sPLS_cands[order(sPLS_cands$score, decreasing = T),] -->
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-<!-- avg_point <- angles[5,]/5 -->
-
-<!-- rot.mat <- matrix(c(0,-1,1,0),nrow = 2, byrow = T)  #90 degree clockwise rotation -->
-
-<!-- rotated_point <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat) -->
-
-<!-- ang <- angle(avg_point,c(1,0)) -->
-
-<!-- rot.mat2 <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation -->
-<!-- rotated_point2 <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat2) -->
-
-
-<!-- # rot.mat3 <- matrix(c(cos(ang),sin(ang),-sin(ang),cos(ang)),nrow = 2, byrow = T) #anticlockwise rotation -->
-<!-- # rotated_point3 <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat3) -->
-
-
-<!-- ggplot() +  -->
-<!--   geom_point(data = sPLS_cands, aes(x = comp1, y = comp2), alpha = 0.1) + -->
-<!--   geom_point(data = sPLS_cands[1:100,], aes(x = comp1, y = comp2)) + -->
-<!--   geom_segment(data = avg_point, aes(x = 0, y = 0, xend = comp1, yend = comp2)) + -->
-<!--   # geom_segment(data = rotated_point, aes(x = 0, y = 0, xend = V1, yend = V2)) + -->
-<!--   geom_segment(data = rotated_point2, aes(x = 0, y = 0, xend = V1, yend = V2)) + -->
-<!--   # geom_segment(data = rotated_point3, aes(x = 0, y = 0, xend = V1, yend = V2)) + -->
-
-<!--   # xlim(c(-0.1,0.1))+ -->
-<!--   # ylim(c(-0.1,0.1)) + -->
-
-<!--   theme_bw() -->
-<!--   # geom_smooth(method = "lm") -->
-
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- #rotated loadings -->
-<!-- ang <- angle(avg_point,c(1,0)) -->
-
-<!-- rot.mat2 <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation -->
-
-<!-- rotated_point2 <- as.data.frame(c(as.matrix(avg_point)) %*% rot.mat2) -->
-
-<!-- rotate <- function(x,y){ -->
-<!--   x <- c(as.matrix(x)) -->
-<!--   x %*% y -->
-<!-- } -->
-
-<!-- loadings_r_baits <- t(apply(sPLS_cands[,c("comp1","comp2")],1,rotate, y = rot.mat2)) -->
-<!-- colnames(loadings_r_baits) <- c("comp1","comp2") -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- ggplot() +  -->
-<!--   geom_point(data = loadings_r_baits, aes(x = comp1, y = comp2), alpha = 0.1) + -->
-<!--   geom_point(data = loadings_r_baits[1:100,], aes(x = comp1, y = comp2)) + -->
-<!--   theme_bw() -->
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-<!-- #density  -->
-<!-- density <- kde2d(loadings_r[,1], loadings_r[,2], n = 200) -->
-<!-- image(as.matrix(density$z), col = hcl.colors(20)) -->
-
-
-
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-<!-- range.ang <- seq(from = -pi/6, to = pi/6, length.out = 60) -->
-
-<!-- ### -->
-
-<!-- i <- NULL -->
-<!-- L_R <- data.frame() -->
-<!-- LOADINGS_R <- list() -->
-
-<!-- for(i in 1:length(range.ang)){ -->
-
-
-<!-- ang <- range.ang[i] -->
-
-<!-- rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation -->
-<!-- loadings_r <- t(apply(loadings_r_baits[,c("comp1","comp2")],1,rotate, y = rot.mat)) -->
-<!-- colnames(loadings_r) <- c("comp1","comp2") -->
-<!-- L_R <- rbind(L_R,loadings_r) -->
-<!--   LOADINGS_R[[i]] <- loadings_r -->
-
-
-<!-- } -->
-
-<!-- # colnames(LOADINGS_R) <- c("comp1","comp2") -->
-<!-- L_R$rad <- rep(range.ang, each = nrow(sPLS_cands)) -->
-<!-- L_R$frame <- rep(c(1:length(range.ang)), each = nrow(sPLS_cands)) -->
-
-
-<!-- ``` -->
-
-
-
-<!-- ```{r} -->
-<!-- #get sd of original comp1 distribution -->
-<!-- sigma <- sd(sPLS_cands$comp1) -->
-
-<!-- big.T.sig <- function(x,y){ -->
-<!--   big <- length(which(x > 2*y)) -->
-<!--   return(big) -->
-<!-- } -->
-
-<!-- i <- NULL -->
-<!-- res <- c() -->
-<!-- for(i in 1:length(LOADINGS_R)){ -->
-
-<!--   r <- big.T.sig(LOADINGS_R[[i]][,1],sigma) -->
-<!--   res <- c(res,r) -->
-<!-- } -->
-
-<!-- ``` -->
-
-
-
-<!-- ```{r} -->
-<!-- RES <- cbind.data.frame("Rad" = range.ang, "Density" = res) -->
-
-<!-- density <- ggplot(RES, aes(x = Rad, y = Density))+ -->
-<!--   geom_smooth() + theme_bw() + ggtitle("Number of points above 2*sigma of original rotation") -->
-
-<!-- density -->
-
-<!-- ``` -->
-
-
-
-<!-- ```{r} -->
-
-<!-- #taken from https://stackoverflow.com/questions/6836409/finding-local-maxima-and-minima -->
-<!-- inflect <- function(x, threshold = 1){ -->
-<!--   up   <- sapply(1:threshold, function(n) c(x[-(seq(n))], rep(NA, n))) -->
-<!--   down <-  sapply(-1:-threshold, function(n) c(rep(NA,abs(n)), x[-seq(length(x), length(x) - abs(n) + 1)])) -->
-<!--   a    <- cbind(x,up,down) -->
-<!--   list(minima = which(apply(a, 1, min) == a[,1]), maxima = which(apply(a, 1, max) == a[,1])) -->
-<!-- } -->
-
-
-<!-- ggres <- ggplot_build(density)$data[[1]] -->
-<!-- infs <- inflect(ggres$y) -->
-<!-- rads <- ggres$x[infs$maxima] -->
-
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-<!-- maxima.ang <- rads -->
-
-<!-- ### -->
-
-<!-- i <- NULL -->
-<!-- # L_R <- data.frame() -->
-<!-- sPLS_maxima_cands <- list() -->
-
-<!-- for(i in 1:length(maxima.ang)){ -->
-
-
-<!-- ang <- maxima.ang[i] -->
-
-<!-- rot.mat <- matrix(c(cos(ang),-sin(ang),sin(ang),cos(ang)),nrow = 2, byrow = T) #clockwise rotation -->
-<!-- loadings_r <- as.data.frame(t(apply(sPLS_cands[,c("comp1","comp2")],1,rotate, y = rot.mat))) -->
-<!-- colnames(loadings_r) <- c("comp1","comp2") -->
-<!-- # L_R <- rbind(L_R,loadings_r) -->
-<!--   sPLS_maxima_cands[[i]] <- loadings_r[order(loadings_r$comp1, decreasing = T),] -->
-
-
-
-<!-- } -->
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-
-<!-- ggplotly( -->
-<!--   ggplot() +  -->
-<!--   geom_point(data = sPLS_maxima_cands[[1]], aes(x = comp1, y = comp2), alpha = 0.1) + -->
-<!--   geom_point(data = sPLS_maxima_cands[[1]][1:20,], aes(x = comp1, y = comp2)) + -->
-<!--   theme_bw() -->
-<!-- ) -->
-
-<!-- ``` -->
-
-
-
-```{r}
-coexp_cands <- ranked_coexp(baits,X[,which(colnames(X) %in% colnames(resids))])
-
-residual_cands <- ranked_dist(baits[1:3], rpcd)
-
-residual_coexp <- ranked_coexp(baits, resids)
-
-
-```
-
-```{r}
-Methods <- c("sPLS_ASCA","PCA_DIST_ASCA","Correlations_ASCA", "Correlations")
-
-getrank <- function(RES,geneset,NOINFO = 26402){
-  # geneset <- 
-  # NOINFO = length(geneset) - length(ranks)
-  ranks <- which(rownames(RES) %in% geneset)
-  if(length(ranks) < length(geneset)){
-    ranks <- c(ranks,rep(nrow(RES) + 1, length(geneset) - length(ranks))) #NOINFO
-  }
-  
-  Ranks <- cbind.data.frame("Geneset" = geneset, "Rank" = ranks)
-  return(Ranks)
-  
-}
-
-
-psis <- PSI_ref[which(PSI_ref[,1] %in% colnames(resids)),1]
-GAs <- GAs[which(GAs %in% colnames(resids))]
-
-sPLS_ASCA <- rbind.data.frame(getrank(sPLS_cands,p_n_b),getrank(sPLS_cands,psis),getrank(sPLS_cands,GAs))
-sPLS_ASCA <- cbind.data.frame(sPLS_ASCA, "Method" = rep("sPLS_ASCA", nrow(sPLS_ASCA)))
-
-#####
-
-PCA_DIST_ASCA <- rbind.data.frame(getrank(residual_cands,p_n_b),getrank(residual_cands,psis),getrank(residual_cands,GAs))
-PCA_DIST_ASCA <- cbind.data.frame(PCA_DIST_ASCA, "Method" = rep("PCA_DIST_ASCA", nrow(PCA_DIST_ASCA)))
-
-Correlations <- rbind.data.frame(getrank(coexp_cands,p_n_b),getrank(coexp_cands,psis),getrank(coexp_cands,GAs))
-Correlations <- cbind.data.frame(Correlations, "Method" = rep("Correlations", nrow(Correlations)))
-
-Correlations_ASCA <- rbind.data.frame(getrank(residual_coexp,p_n_b),getrank(residual_coexp,psis),getrank(residual_coexp,GAs))
-Correlations_ASCA <- cbind.data.frame(Correlations_ASCA, "Method" = rep("Correlations_ASCA", nrow(Correlations_ASCA)))
-
-
-
-RES <- rbind.data.frame(sPLS_ASCA, PCA_DIST_ASCA, Correlations_ASCA, Correlations)
-
-RES$Geneset[which(RES$Geneset %in% p_n_b)] <- "SLs"
-RES$Geneset[which(RES$Geneset %in% psis)] <- "Phosphate"
-RES$Geneset[which(RES$Geneset %in% GAs)] <- "GAs"
-
-
-q <- ggplot(RES[-which(RES$Geneset == "GAs"),], aes(x = Method, y = Rank, fill = Geneset)) + geom_boxplot() + theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust=1))
-```
-
-
-## Methods compared
-
-```{r, fig.cap="Method Ranks on Real Data"}
-q
-
-```
-
-
-
-Ranked correlations outperforms the other methods at detecting SL genes, however it also detects PSIs as top candidates, due to the strong between correlations. Using the ASCA residuals to investigate the experiment independent associations helps to overcome this. Ranked correlations on ASCA residuals and sPLS on ASCA residuals both perform well at detecting the SLs and not detect the PSIs. The PSIs are ranked as least important with sPLS_ASCA, this would suggest the method is performing the required task best.
-
-We can explain the larger variation, and slightly worse ranking of sPLS_ASCA compared to Correlations_ASCA since with sPLS we rank the features based on VIP scores and therefore do not take the direction of the relationship into account, where at least 2 of the features used to evaluate the methods were detected through directional ranked correlations.
-
-Since looking at the distance between the SL genes in the PCA space did not yield the required results we drop this method at this point for simplicity.
-
-
-# QQplots of some top candidates
-
-Through assessing the relationship between one bait and the 9 top candidates of each method tested we highlight the problem with basic correlations, with 4 of the top 9 candidates showing little to no within group correlations. However it is difficult to determine which of the two residual based methods are performing best (within the top 20 candidates of the two there are 10 common features). Both are able to detect more complex relationships, after accounting for variance explained by the experimental design (plots below).
-
-It makes more sense to use sPLS as this models the response in a multivariate way as opposed to averaged pairwise rankings in the correlation approach.
-
-In this limited view we can see that sPLS seems to detect features that have a nonlinear relationship across the experiment, through linear relations in the ASCA residuals. However, sPLS as implemented through mixOmics shows an artefact (still uncharacterised) in previous simulations.
-
-
-# Questions
-
-- What metric to use in place of visualisation of pairwise relationships to measure method performance in this context?
-- If the relationship between SLs in the PCA of the ASCA residuals is unclear, how to simulate their relationship?
-- Could the filtering be automated or turned into an optimisation problem, instead of using arbitrary cutoff values?
-- Would automated selection of an "axis of interest" in the main effect model improve candidate selection - i.e. features need to behave in a more strictly similar manner (positive or negative) to baits?
-- Is it possible and would it make sense to project the baits into the latent space of the PLS model to define an axis/direction?
-
-
-```{r}
-
-qqplots_spls <- list()
-qqplots_coexp <- list()
-qqplots_pca <- list()
-qqplots_resid_cor <- list()
-
-qqplots_spls_SR <- list()
-
-i <- NULL
-for(i in 1:9){
-  qqplots_spls[[i]] <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% rownames(sPLS_cands)[i])],
-                        "Bait" = X[,which(colnames(X) %in% baits[1])]),meta, 
-       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time))
-  
-  qqplots_coexp[[i]] <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% rownames(coexp_cands)[i])],
-                        "Bait" = X[,which(colnames(X) %in% baits[1])]),meta, 
-       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time))
-  
-  qqplots_resid_cor[[i]] <- qqplot(cbind.data.frame("Candidate" = X[,which(colnames(X) %in% rownames(residual_coexp)[i])],
-                        "Bait" = X[,which(colnames(X) %in% baits[1])]),meta, 
-       aes(x = Bait, y = Candidate, colour = growth_condition, shape = time))
-
-}
-
-wrap_plots(qqplots_coexp) + plot_layout(guides = "collect") + plot_annotation(title = "Correlations")
-wrap_plots(qqplots_spls) + plot_layout(guides = "collect") + plot_annotation(title = "sPLS_ASCA")
-wrap_plots(qqplots_resid_cor) + plot_layout(guides = "collect") + plot_annotation(title = "Correlations_ASCA")
-
-
-
-
-```
-
 
