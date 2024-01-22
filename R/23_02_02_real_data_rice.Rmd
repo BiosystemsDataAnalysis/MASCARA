@@ -1,5 +1,5 @@
 ---
-title: "Haider Data Demo"
+title: "Haider Data Figures"
 author: "Fred White"
 date: '`r format(Sys.time(), "%d %B, %Y")`'
 output:

@@ -29,7 +29,6 @@ header-includes:
 ```{r setup, include=FALSE}
 library(knitr)
 knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, root.dir=here()
-# install.pacakges()
 
 
 

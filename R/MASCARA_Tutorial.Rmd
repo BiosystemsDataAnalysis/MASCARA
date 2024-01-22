@@ -1,0 +1,91 @@
+---
+title: "MASCARA: Coexpression Analysis Tutorial"
+author: "Fred White"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output: 
+  html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+```
+
+
+```{r, echo=FALSE}
+library(devtools)
+library(ggplot2)
+library(MetStaT)
+library(gASCA)
+library(patchwork)
+library(readxl)
+library(ggfortify)
+library(ggrepel)
+library(grid)
+library(gridExtra)
+library(tidyr)
+library(tidyverse)
+library(reshape2)
+library(scales)
+library(matrixStats)
+library(DESeq2)
+library(MASS)
+library(glmnet)
+library(doParallel)    
+library(MUVR) 
+library(pheatmap)
+library(caret)
+library(data.table)
+library(plotly)
+library(mixOmics)
+library(DiscriMiner)
+library(pracma)
+library(matlib)
+library(truncnorm)
+
+
+source("DATA_SIM_FUNCS.R")
+source("MASCARA_FUNCS.R")
+```
+
+Here we show a typical use case of MASCARA applied to a simulated dataset.
+
+
+
+User must supply a dataframe of filtered + transformed data plus associated metadata.
+
+```{r}
+
+meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
+colnames(meta) <- c("growth_condition","time","interaction")
+meta <- as.data.frame(apply(meta,2,factor))  #9
+
+
+Experiment_responders <- 30
+
+set.seed(3)
+# rnd_seed <- abs(rnorm(3, mean = 0.7, sd = 0.5))
+
+
+baits <- paste0("X_",c(1985:1988))   #501:510
+spikes <- paste0("X_",c(1989:2000))
+
+sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, plot = TRUE, 
+                        EffectSize = c(X_a_ab = 1.8, time = 1, E = 10, mu = 1, Struc_E = 1), 
+                        struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
+                        b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, 
+                        Experiment_responders = Experiment_responders, struc_seed = 127) 
+
+```
+
+```{r}
+ar <- ASCA(sim_data[[1]], m = meta, Baits = baits, spikes = spikes, ncands = ncands, distance_calc = FALSE, Return_Model = FALSE)
+```
+
+
+
+```{r}
+#classic
+MASCARA_2 <- MASCARA4_test_2(ar[[3]], baits, spikes = spikes)
+which(rownames(MASCARA_2[[2]]) %in% spikes)
+```
+

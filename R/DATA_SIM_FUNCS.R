@@ -2191,7 +2191,7 @@ Create_Core_DEV_2 <- function(nreps, meta, irr_spikes = TRUE, struc_resid = FALS
                abs(rnorm((Experiment_responders + 4),mean = 1, sd = 0.25)), 
                targets_a_ab)
   
-  print(length(a_ab_p1))
+  #print(length(a_ab_p1))
   
   if(irr_spikes == FALSE){
     a_ab_p2 <- c(rep(0,length(a_ab_p1)))
@@ -2311,9 +2311,9 @@ Create_Core_DEV_2 <- function(nreps, meta, irr_spikes = TRUE, struc_resid = FALS
     norm_Struc_E <- norm(Struc_E, type = "F")
     
     
-    dim(Struc_E)
-    print(E[,1] %*% time[,1])
-    print(time[,1] %*% X_a_ab[,1])
+    #dim(Struc_E)
+    #print(E[,1] %*% time[,1])
+    #print(time[,1] %*% X_a_ab[,1])
     
     
     Non_Struc_E <- matrix(rnorm(dim(X_a_ab)[1] * dim(X_a_ab)[2], mean = 0, sd = noise_sd), nrow = nrow(meta))
