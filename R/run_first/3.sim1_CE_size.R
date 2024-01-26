@@ -25,70 +25,56 @@ library(mixOmics)
 library(pracma)
 library(pls)
 
-source("../DATA_SIM_FUNCS.R")
+# source("../DATA_SIM_FUNCS.R")
+
+source("DATA_SIM_FUNCS_DEV.R")
+
 F1_plot <- F1_plot_no_plot
 nreps <- 3
 ncands <- 500
 
 Create_Core_DEV <- Create_Core_DEV_2
 
-sPLSr <- function(X, meta, baits, spikes, ncands, TITLE = NULL){
+
+splsR <- function(resids, baits, spikes){
+  #vip
+  spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                         resids[,which(colnames(resids) %in% baits)], ncomp = 2)
   
   
-  splsR <- spls(X[,-which(colnames(X) %in% baits)],X[,which(colnames(X) %in% baits)], ncomp = 2)
+  #####
+  y <- colMeans(spls_res$Yloadings)
+  U <- spls_res$projection
   
-  # splsR <- simpls.fit(X[,-which(colnames(X) %in% baits)],X[,which(colnames(X) %in% baits)], ncomp = 2)
+  x <- Yloadings(spls_res)
+  ve_y <- colSums(x^2)/nrow(x)
   
-  sPLS_cands <- cbind.data.frame(abs(splsR$loadings$X) %*% splsR$prop_expl_var$X, splsR$loadings$X)
-  sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = T),]
+  sPLS_cands <- cbind.data.frame(abs(spls_res$projection) %*% ve_y, spls_res$projection)
+  sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = TRUE),]
   
-  F1_scores <- F1_plot(sPLS_cands, spikes, ncands, TITLE = paste0(": ",TITLE))
+  RP <- prod(which(rownames(sPLS_cands) %in% spikes))^(1/length(spikes))
   
-  return(list(F1_scores,sPLS_cands))
-  
+  return(list(RP, sPLS_cands))
 }
 
 
 
-MASCARA4_test <- function(resids,ref, baits, spikes, ncands){
-  
-  Fref <- ref
-  
-  spls_res <- spls(resids[,-which(colnames(resids) %in% baits)], 
-                   resids[,which(colnames(resids) %in% baits)], all.outputs = T)
-  
-  # spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)], 
-  #                  resids[,which(colnames(resids) %in% baits)], all.outputs = T)
-  
-  sPLS_cands <- cbind.data.frame(abs(spls_res$loadings$X) %*% spls_res$prop_expl_var$X, spls_res$loadings$X) #  * spls_res$prop_expl_var$X
-  sPLS_cands <- sPLS_cands[order(sPLS_cands[,1], decreasing = T),]
-  
-  importance <- paste0(round(spls_res$prop_expl_var$X * 100, digits = 2), "%")
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_cands),Fref2$Feature),]
+
+MASCARA4_test <- function(resids, baits, spikes){
+  #target projection
+  spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                         resids[,which(colnames(resids) %in% baits)], ncomp = 2)
   
   #####
-
-  y <- colMeans(spls_res$loadings$Y)
-
-  U <- spls_res$loadings$X
+  y <- colMeans(spls_res$Yloadings)
+  U <- spls_res$projection
   UTP <- (dot(t(U),y)/dot(y,y))
   
-  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = T)])
-  
-  sPLS_maxima_cands <- sPLS_bait_cands
-  
-  
-  Fref2 <- Fref[-which(Fref$Feature %in% baits),]
-  Fref2 <- Fref2[match(rownames(sPLS_maxima_cands),Fref2$Feature),]
-  
- 
-  RP <- prod(which(rownames(sPLS_maxima_cands) %in% spikes))^(1/length(spikes))
+  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
+  RP <- prod(which(rownames(sPLS_bait_cands) %in% spikes))^(1/length(spikes))
   
   
-
-  return(list(RP, sPLS_maxima_cands,UTP))
+  return(list(RP, sPLS_bait_cands,UTP))
 }
 
 
@@ -107,37 +93,6 @@ sim_data <- Create_Core_DEV(nreps = 3, meta = meta, plot = F,
                             EffectSize = c(X_a_ab = 1, time = 1, E = 0.5, mu = 1, Struc_E = 1.5), 
                             struc_resid = T, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1.5,0.7,0.6,0.1),
                             b_sigma = c(1,0), irr_spikes = TRUE, SCORE_SEED = 1027)
-
-ref <- cbind.data.frame(Feature = colnames(sim_data[[1]]), sim_data[[2]], sim_data[[3]])
-cols <- colnames(ref[,-1])
-ref$Effect <- do.call(paste, c(ref[cols], sep = "_"))
-ref$Effect[which(ref$Effect == "0.5_0_0_0.1")] <- "Low PC1"
-ref$Effect[which(ref$Effect == "1_0_0_0.1")] <- "Medium PC1"
-ref$Effect[which(ref$Effect == "1.5_0_0_0.1")] <- "High PC1"
-ref$Effect[which(ref$Effect == "0_0.5_0.1_0")] <- "PC2"
-ref$Effect[grep("^0", ref$Effect)] <- "None"
-ref$Effect <- factor(ref$Effect, levels = c("Low PC1", "Medium PC1", "High PC1", "PC2", "None"))
-colnames(ref)[8] <- "Baits"
-
-ref$Description <- ref$Baits
-
-
-
-ref$Baits[1985:1988] <- "Baits"
-ref$Baits[1989:2000] <- "Candidates"
-
-ref$Baits[(2000 - (16 + Experiment_responders)):1984] <- "ab1+ve"
-# ref$Baits[1969:1976] <- "ab1+ve"
-ref$Baits[501:515] <- "ab2+ve"
-ref$Baits[486:500] <- "ab2-ve"
-# ref$Baits[1969:1976] <- "Expt_Independent"
-
-ref$Baits[1:24] <- "ab1-ve"
-
-
-
-ref$Description <- ref$Baits
-
 
 
 
@@ -238,13 +193,11 @@ while(i < length(X_funced) + 1){
     PLS_RES[,i] <- hcr[[1]]
     PLS_CANDS[,i] <- rownames(hcr[[2]])
     
-    
-    
-    MASCARAh <- MASCARA4_test(ar[[3]], ref, baits, spikes = spikes, ncands)
+    MASCARAh <- MASCARA4_test(ar[[3]], baits, spikes = spikes)
     MASCARA_RES[,i] <- MASCARAh[[1]]
     MASCARA_CANDS[,i] <- rownames(MASCARAh[[2]])
     
-    
+
 
     
     i <- i + 1
@@ -270,10 +223,13 @@ while(i < length(X_funced) + 1){
 
 Noise_sim <- list(ASCA_RES, PLS_RES, COEXP_HIGH_RES, MASCARA_RES)
 
-# # saveRDS(Noise_sim, "Noise_Sim_220926.RDS")
+## # saveRDS(Noise_sim, "Noise_Sim_220926.RDS")
 
-# saveRDS(Noise_sim, "Noise_Sim_Coexp_23_06_28.RDS")
+## saveRDS(Noise_sim, "Noise_Sim_Coexp_23_06_28.RDS")
 
-saveRDS(Noise_sim, "Noise_Sim_Coexp_23_07_26_11.RDS")
+# saveRDS(Noise_sim, "Noise_Sim_Coexp_23_07_26_11.RDS")
+
+
+saveRDS(Noise_sim, "Noise_Sim_Coexp_24_01_22.RDS")
 
 
