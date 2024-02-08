@@ -63,6 +63,10 @@ knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, 
 #     address: Department 1, Street, City, State, Zip
 #   - code: Another example
 #     address: Department 2, Street, City, State, Zip
+
+
+## CHANGE THIS   
+#"one comment already, since I am looking at it right now. In the readme “~/MASCARA/R” , the repo (clone) most likely doesn’t live there. Maybe start from ‘clone this repo’ and then let people set the wd to where they put the repo. Or put the snippet from the readme into an r script that you let them open in rstudio to make sure they’re in the right place" AHB
 ```
 
 
@@ -133,7 +137,7 @@ Plant transcriptome studies typically involve the use of designed experiments wh
 
 
 
-```{r nettype, fig.cap= c("Pathway types exemplified, POI; pathway of interest, RP; related pathway, URP; unrelated pathway. Panel A represents hypothetical biological pathways  that are all affected by the experimental design and thus all contain DE genes, here the edges represent real connections between the nodes/genes. Panel B highlights the problem with detecting these pathways when dealing with data from designed experiments, edges represent putative connections defined by coexpression analysis; black is desired (within network detection), grey non-desired.")}
+```{r nettype, fig.cap= c("Pathway types exemplified, POI; pathway of interest, RP; related pathway, URP; unrelated pathway. Panel A represents hypothetical biological pathways  that are all affected by the experimental design and thus all contain DE genes, here the edges represent real connections between the nodes/genes. Panel B highlights the problem with detecting these pathways when dealing with data from designed experiments, here edges represent putative connections defined by coexpression analysis; black is desired (within network detection), grey non-desired.")}
 
 #CHANGE caption
 
@@ -452,16 +456,26 @@ The response matrix $\mathbf{B}$ contains only the baits (relating to the green 
 
 This model is estimated in our work using the SIMPLS algorithm (@dejongSIMPLSAlternativeApproach1993) as follows:
 
-1. Initialise \( \mathbf{\tilde{Y}}_0 \) to \( \mathbf{\tilde{Y}} \) and \( \mathbf{B}_0 \) to \( \mathbf{B} \).
-2. Iteratively perform the following steps for \( k = 0, 1, 2, \ldots \):
-   a. Compute the singular value decomposition (SVD) of \( \mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k} \) to obtain the left and right singular vectors; weights \( \mathbf{u}_k \) and \( \mathbf{v}_k \) respectively.
-   b. Project \( \mathbf{\tilde{Y}}_{k} \) and \( \mathbf{B}_{k} \) onto the first left and right singular vectors (\( \mathbf{u}_k \), \( \mathbf{v}_k \)) to obtain the scores \( \bm{t}_k = \mathbf{\tilde{Y}}_{k} \mathbf{u}_k \) and \( \bm{w}_k = \mathbf{B}_{k} \mathbf{v}_k \).
-  
-Under the conditions of orthogonal scores; $\mathbf{t}_{k}^{T}\mathbf{t}_{k} = 0$ and normalised weights; $\mathbf{u}_{k}^T\mathbf{u}_{k{}} = 1$ and $\mathbf{v}_{k}^T\mathbf{v}_{k{}} = 1$.
+<!-- 1. Initialise \( \mathbf{\tilde{Y}}_0 \) to \( \mathbf{\tilde{Y}} \) and \( \mathbf{B}_0 \) to \( \mathbf{B} \). -->
+<!-- 2. Iteratively perform the following steps for \( k = 0, 1, 2, \ldots \): -->
+<!--    a. Compute the singular value decomposition (SVD) of \( \mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k} \) to obtain the left and right singular vectors; weights \( \mathbf{u}_k \) and \( \mathbf{v}_k \) respectively. -->
+<!--    b. Project \( \mathbf{\tilde{Y}}_{k} \) and \( \mathbf{B}_{k} \) onto the first left and right singular vectors (\( \mathbf{u}_k \), \( \mathbf{v}_k \)) to obtain the scores \( \bm{t}_k = \mathbf{\tilde{Y}}_{k} \mathbf{u}_k \) and \( \bm{w}_k = \mathbf{B}_{k} \mathbf{v}_k \). -->
+
+1. For the $1^{st}$ component:
+   a. Compute the left singular vector $\mathbf{u}_1$ of $\mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k}$
+   b. $\mathbf{t}_1 = \mathbf{\tilde{Y}}\mathbf{u}; \mathbf{T} = \left [\mathbf{t}_1\right]$
+   c. $\mathbf{p}_1 = \frac{\mathbf{\tilde{Y}}^T\mathbf{t}^t}{\mathbf{t}^t\mathbf{t}}$
+2. For the following components:
+   a. Compute the left singular vector $\mathbf{u}_k$ of $(\mathbf{I} - \mathbf{P}(\mathbf{P}^T\mathbf{P})^{-1}\mathbf{P})\mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k}$
+   b. $\mathbf{t}_k = \mathbf{\tilde{Y}}\mathbf{u}_k; \mathbf{T} = \left [\mathbf{T}|\mathbf{t}_k\right]$
+   c. $\mathbf{p}_k = \frac{\mathbf{\tilde{Y}}^T\mathbf{t}_{k}^t}{\mathbf{t}_{k}^t\mathbf{t}_{k}}; \mathbf{P} = \left [\mathbf{P}|\mathbf{p}_k\right]$
+
+Under the conditions of orthogonal scores; $\mathbf{t}_{k}^{T}\mathbf{t}_{k} = 0$ and normalised weights; $\mathbf{u}_{k}^T\mathbf{u}_{k{}} = 1$ . Loadings for B can be obtained with a least squares step $\mathbf{Q} = (\mathbf{T}^T\mathbf{T})^{-1}\mathbf{T}^T\mathbf{B}$.
    
-PLS2 aims to maximize the covariance between the scores \( \bm{t}_k \) and \( \bm{w}_k \) at each iteration. In the following simulations and application the number of components calculated by PLS2 is set to 2 to create an interpretable model. 
+In the following simulations and application the number of components calculated by PLS2 is set to 2 to create an interpretable model. 
 
-
+<!-- and $\mathbf{v}_{k}^T\mathbf{v}_{k{}} = 1$ -->
+<!-- PLS2 aims to maximize the covariance between the scores \( \bm{t}_k \) and \( \bm{w}_k \) at each iteration. -->
 
 
 ### Variable importance in projection (VIP)
@@ -474,7 +488,7 @@ In this work genes are selected in both ASCA+ and PLS through VIP which is a way
 \end{aligned}(\#eq:vip)
 \end{equation}
 
-Where k=1...K represents the number of components in the respective models, j indexes a gene,  $H$ is substituted for the loadings $\mathbf{P}_{\alpha + \alpha\beta}^T$ or weights $\mathbf{U}$ (for ASCA+ and PLS respectively) and VE is the variance explained, where $VE_{k}$ is the amount of variance explained by component k and $VE_{total}$ is the variance explained by the whole model. In ASCA+ we calculate the VIP scores in the latent space of \(\bm{Y}_{\alpha + \alpha\beta}\) as described in @thielASCAAPCAExtensions2017. In PLS we use the VE from the latent space of \(\bm{B}\) using the weights ($\mathbf{U}$) from the latent space of \(\bm{Y}\).
+Where k=1...K represents the number of components in the respective models, j indexes a gene,  $H$ is substituted for the loadings $\mathbf{P}_{\alpha + \alpha\beta}^T$ or weights $\mathbf{U}$ (for ASCA+ and PLS respectively) and VE is the variance explained, where $VE_{k}$ is the amount of variance explained by component k and $VE_{total}$ is the variance explained by the whole model. In ASCA+ we calculate the VIP scores in the latent space of \(\bm{Y}_{\alpha + \alpha\beta}\) as described in @thielASCAAPCAExtensions2017. In PLS we use the VE from the latent space of \(\bm{B}\) using the weights ($\mathbf{U}$) from the latent space of the predictor matrix \(\bm{Y}\).
 
 
 

@@ -49,43 +49,79 @@ source("MASCARA_FUNCS.R")
 
 Here we show a typical use case of MASCARA applied to a simulated dataset.
 
-
-
-User must supply a dataframe of filtered + transformed data plus associated metadata.
+User must supply a dataframe of filtered + transformed data plus associated metadata, with samples in the rows and genes in the columns.
 
 ```{r}
-
 meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
 colnames(meta) <- c("growth_condition","time","interaction")
-meta <- as.data.frame(apply(meta,2,factor))  #9
+meta <- as.data.frame(apply(meta,2,factor))  
+knitr::kable(head(meta))
+```
 
+Data is assumed to be approximately normally distributed:
 
+```{r setting simulation parameters}
 Experiment_responders <- 30
 
 set.seed(3)
-# rnd_seed <- abs(rnorm(3, mean = 0.7, sd = 0.5))
 
-
-baits <- paste0("X_",c(1985:1988))   #501:510
+baits <- paste0("X_",c(1985:1988))  
 spikes <- paste0("X_",c(1989:2000))
 
 sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, plot = TRUE, 
                         EffectSize = c(X_a_ab = 1.8, time = 1, E = 10, mu = 1, Struc_E = 1), 
                         struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
                         b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, 
-                        Experiment_responders = Experiment_responders, struc_seed = 127) 
-
+                        Experiment_responders = Experiment_responders, struc_seed = 127)[[1]] 
+hist(sim_data)
 ```
+
+We calculate an ASCA model on the data to partition the experimental and residual variance:
 
 ```{r}
-ar <- ASCA(sim_data[[1]], m = meta, Baits = baits, spikes = spikes, ncands = ncands, distance_calc = FALSE, Return_Model = FALSE)
+ar <- ASCA(sim_data, m = meta, Baits = baits, spikes = spikes, ncands = ncands, distance_calc = FALSE, Return_Model = FALSE)
+resids <- ar[[3]]
 ```
 
-
+Before continuing it is a good idea to check that the set of baits are indeed correlated in the residual variance:
 
 ```{r}
-#classic
-MASCARA_2 <- MASCARA4_test_2(ar[[3]], baits, spikes = spikes)
-which(rownames(MASCARA_2[[2]]) %in% spikes)
+cor(resids[,which(colnames(resids) %in% baits)])
 ```
+In this case they are, in the case of real data we expect these values to be somewhat lower (values ~ 0.6 are reason enough to continue).
+
+Another sanity check at this stage is to look at the baits residual variance against eachother:
+
+```{r}
+
+plot(resids[,baits[1]], resids[,baits[2]])
+
+```
+
+We can see above that there is a relationship between the examples.
+
+From here we take the residuals and calculate a PLS2 model with a predefined set of baits using the SIMPLS algorithm:
+
+```{r}
+
+spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                          resids[,which(colnames(resids) %in% baits)], ncomp = 2)
+  
+```
+
+
+Selecting features with $\mathbf{\bar{q}}$ target projection:
+
+```{r}
+q_bar <- colMeans(spls_res$Yloadings)
+R <- spls_res$projection
+R_TP <- (dot(t(R),q_bar)/dot(q_bar,q_bar))
+  
+Candidates <- as.data.frame(R_TP[order(R_TP, decreasing = TRUE)])
+```
+
+Now we have our ordered candidate list, top of the list represents features that have the strongest positive association with the baits.
+
+
+
 

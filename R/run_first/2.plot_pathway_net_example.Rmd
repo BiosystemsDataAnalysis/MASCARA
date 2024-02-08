@@ -249,8 +249,28 @@ colnames(adj) <- colnames(cand_vals)
 adj[type == "URP", type == "URP"]  <- 1
 adj[type %in% c("POI","RP"), type %in% c("POI","RP")] <- 1
 
+
+
 adj[type %in% c("POI","RP"), type == "URP"] <- -1
 adj[type == "URP", type %in% c("POI","RP")] <- -1
+```
+
+```{r}
+#sparsify -1 connections
+
+set.seed(22)
+
+# adj[which(adj == -1)] <- adj[which(adj == -1)] * sample(c(1,0,0,0))
+
+# adj[which(adj == -1, arr.ind = T)] <- adj[which(adj == -1,arr.ind = T)] * sample(c(1,0,0,0))
+
+  
+
+# W <- matrix(sample(c(1,1,0,0,0),length(baits) * length(spikes), replace = T), nrow = length(spikes))
+# 
+# 
+# adj[which(rownames(adj) %in% spikes),which(colnames(adj) %in% baits)] <- adj[which(rownames(adj) %in% spikes),which(colnames(adj) %in% baits)] * W
+
 ```
 
 
@@ -350,9 +370,9 @@ badplot <- ggraph(tidynet, layout = coords) +
 
 ```{r}
 
-png("../networktypes.png", height = 3600, width = 4800, res = 700)
+# png("../networktypes.png", height = 3600, width = 4800, res = 700)
 realplot + badplot + plot_annotation("Pathway Types", tag_levels = 'A') + plot_layout(guides = "collect")
-dev.off()
+# dev.off()
 
 ```
 
