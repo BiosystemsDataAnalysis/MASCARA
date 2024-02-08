@@ -79,8 +79,8 @@ hist(sim_data)
 We calculate an ASCA model on the data to partition the experimental and residual variance:
 
 ```{r}
-ar <- ASCA(sim_data, m = meta, Baits = baits, spikes = spikes, ncands = ncands, distance_calc = FALSE, Return_Model = FALSE)
-resids <- ar[[3]]
+ar <- ASCA_decompose(d = meta[,1:2], x = sim_data, f = "growth_condition + time + growth_condition:time")
+resids <- ar$residuals
 ```
 
 Before continuing it is a good idea to check that the set of baits are indeed correlated in the residual variance:
