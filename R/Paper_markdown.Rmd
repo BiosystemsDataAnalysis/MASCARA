@@ -44,29 +44,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = F, message = F, fig.pos = "H") #, 
 
 #bibliography: "`r rbbt::bbt_write_bib('MASCARA_refs.json', overwrite = TRUE)`"
 
-# Fred T.G. White^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands, Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands *], Anna Heintz-Buschart^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Lemeng Dong^[Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Harro J. Bouwmeester^[Plant Hormone Biology Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Johan A. Westerhuis^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands], Age K. Smilde^[Biosystems Data Analysis Group, Swammerdam Institute for Life Sciences, University of Amsterdam, Amsterdam, The Netherlands]
-
-
-# - name: Fred T.G. White
-#     email: f.t.g.white@uva.nl
-#     affiliation: 
-#       - University of Amsterdam
-#       - Another example
-#     corresponding: alice@example.com
-#   - name: Bob Security
-#     email: bob@example.com
-#     affiliation: 
-#       - Another University
-#       - Some Institute of Technology
-# address:
-#   - code: Univeristy of Amsterdam
-#     address: Department 1, Street, City, State, Zip
-#   - code: Another example
-#     address: Department 2, Street, City, State, Zip
-
-
-## CHANGE THIS   
-#"one comment already, since I am looking at it right now. In the readme “~/MASCARA/R” , the repo (clone) most likely doesn’t live there. Maybe start from ‘clone this repo’ and then let people set the wd to where they put the repo. Or put the snippet from the readme into an r script that you let them open in rstudio to make sure they’re in the right place" AHB
 ```
 
 
@@ -133,13 +110,9 @@ Experiments in plant transcriptomics are usually designed to induce variation in
 # Introduction
 Plant transcriptome studies typically involve the use of designed experiments which aim to induce variation in pathways of interest (POIs) by controlling one or more experimental factors. This can be done through, for example, varying the level of certain essential nutrients, knocking out/down a gene within a POI. To explore the effects of an intervention, gene expression can be measured through RNA sequencing (RNAseq). Analysis of RNAseq data generally adheres to one of two approaches: differential expression analysis (DE; @andersDifferentialExpressionAnalysis2010; @robinsonEdgeRBioconductorPackage2010) or coexpression analysis (CoE; @langfelderWGCNAPackageWeighted2008; @tzfadiaCoExpNetVizComparativeCoExpression2016). DE is used to determine which genes are expressed differently between two or more experimental conditions, highlighting known or novel pathways affected by the experimental conditions. CoE, on the other hand, aims at discovering genes that are part of an already partially characterized POI. Here, the expression profiles of known genes of the POI (termed "baits") are used to detect novel pathway members with similar expression patterns (here termed "targets"). 
 
-<!-- For the rest of the manuscript we take the strigolactones as our example biological pathway. -->
-
 
 
 ```{r nettype, fig.cap= c("Pathway types exemplified, POI; pathway of interest, RP; related pathway, URP; unrelated pathway. Panel A represents hypothetical biological pathways  that are all affected by the experimental design and thus all contain DE genes, here the edges represent real connections between the nodes/genes. Panel B highlights the problem with detecting these pathways when dealing with data from designed experiments, here edges represent putative connections defined by coexpression analysis; black is desired (within network detection), grey non-desired.")}
-
-#CHANGE caption
 
 a <- knitr::include_graphics("networktypes.png")
 a
@@ -224,7 +197,6 @@ What is notable here is the replicate specific patterns that are apparent amongs
 This marks the goal of this paper, which is to detect within-group coexpressed genes (POI/RP) with a set of baits preferentially to other differentially expressed genes that are not part of the same pathway (URPs, with a different within-group structure).
 
 
-<!-- \onecolumn ### --> 
 
 \End{multicols}
 
@@ -244,7 +216,6 @@ knitr::include_graphics("rice_s_l.png")
 
 \twocolumn
 
-<!-- \Begin{multicols}{2} -->
 
 
 ## Simulations
@@ -456,11 +427,6 @@ The response matrix $\mathbf{B}$ contains only the baits (relating to the green 
 
 This model is estimated in our work using the SIMPLS algorithm (@dejongSIMPLSAlternativeApproach1993) as follows:
 
-<!-- 1. Initialise \( \mathbf{\tilde{Y}}_0 \) to \( \mathbf{\tilde{Y}} \) and \( \mathbf{B}_0 \) to \( \mathbf{B} \). -->
-<!-- 2. Iteratively perform the following steps for \( k = 0, 1, 2, \ldots \): -->
-<!--    a. Compute the singular value decomposition (SVD) of \( \mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k} \) to obtain the left and right singular vectors; weights \( \mathbf{u}_k \) and \( \mathbf{v}_k \) respectively. -->
-<!--    b. Project \( \mathbf{\tilde{Y}}_{k} \) and \( \mathbf{B}_{k} \) onto the first left and right singular vectors (\( \mathbf{u}_k \), \( \mathbf{v}_k \)) to obtain the scores \( \bm{t}_k = \mathbf{\tilde{Y}}_{k} \mathbf{u}_k \) and \( \bm{w}_k = \mathbf{B}_{k} \mathbf{v}_k \). -->
-
 1. For the $1^{st}$ component:
    a. Compute the left singular vector $\mathbf{u}_1$ of $\mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k}$
    b. $\mathbf{t}_1 = \mathbf{\tilde{Y}}\mathbf{u}; \mathbf{T} = \left [\mathbf{t}_1\right]$
@@ -473,9 +439,6 @@ This model is estimated in our work using the SIMPLS algorithm (@dejongSIMPLSAlt
 Under the conditions of orthogonal scores; $\mathbf{t}_{k}^{T}\mathbf{t}_{k} = 0$ and normalised weights; $\mathbf{u}_{k}^T\mathbf{u}_{k{}} = 1$ . Loadings for B can be obtained with a least squares step $\mathbf{Q} = (\mathbf{T}^T\mathbf{T})^{-1}\mathbf{T}^T\mathbf{B}$.
    
 In the following simulations and application the number of components calculated by PLS2 is set to 2 to create an interpretable model. 
-
-<!-- and $\mathbf{v}_{k}^T\mathbf{v}_{k{}} = 1$ -->
-<!-- PLS2 aims to maximize the covariance between the scores \( \bm{t}_k \) and \( \bm{w}_k \) at each iteration. -->
 
 
 ### Variable importance in projection (VIP)
@@ -580,7 +543,6 @@ candtab <- gridExtra::tableGrob(CAND_TAB, rows = NULL, theme = theme1)
 
 ```{r,echo = F}
 
-# Noise_Tests <- readRDS("Noise_Sim_Coexp_23_07_26_11.RDS")  
 Noise_Tests <- readRDS("Noise_Sim_Coexp_24_01_22.RDS")
 
 
@@ -696,21 +658,12 @@ We can see in Figure \@ref(fig:tc) that MASCARA was neither affected by the pres
 
 ## Simulation 2: Replication
 
-<!-- The results from above were obtained from datasets with varying noise, with core aspects such as the underlying structure, the number of replicates, the strength of correlation between variables, and the size of the noise remained fixed. With the following, we test the feasibility range of MASCARA with respect to the ratio of 3 key variance parameters namely: -->
-
-<!-- 1. Within group correlation structure -->
-<!-- 2. Between group correlation structure -->
-<!-- 3. Random noise -->
-
-<!-- Here we set a fixed size of within group correlation structure (\(\|\bm{T}_S\bm{P}_{S}^T\|_F = 0.025\)) as well as number of non-pathway DE genes to 30 (yellow bar size \@ref(fig:simOverview)) across all iterations of this test. We vary the sizes of the other two variance parameters (*d* and *l*). Furthermore we also show the effect of replicate number and demonstrate that MASCARA (along with the other methods) can be applied to data with generic profiles, not limited to the specific structures that were used to demonstrate the differences in coexpression analysis above. Here we create 20 datasets with random combined effect and within group correlation structures. -->
-
 
 ```{r, echo = F}
 #30 random initial scores, similar noise 
 #parameters, 3-30 replicates per condition. 
-# Rep_Tests <- readRDS("Noise_Sim_23_07_29_Replicate_Tests.RDS")  #_3  Noise_Sim_23_06_23_Replicate_Tests.RDS
 
-Rep_Tests <- readRDS("Noise_Sim_24_01_22_Replicate_Tests.RDS")  #_3  Noise_Sim_23_06_23_Replicate_Tests.RDS
+Rep_Tests <- readRDS("Noise_Sim_24_01_22_Replicate_Tests.RDS")  
 
 names(Rep_Tests) <- c("ASCA", "PLS","Correlations","MASCARA")
 
@@ -795,9 +748,6 @@ for(i in orders){
   
   One_Balance[[i]] <- ggplot(mRES[which(mRES$nCERs == orders[i]),], aes(x = Replicate_Number, y = log2(F1_Score), colour = Method, shape = Method, fill = Method)) +
   scale_color_viridis(discrete = T)+
-  # scale_fill_viridis(discrete = T)+
-
-        # scale_shape_manual(values = c(0:3)) +
     stat_summary() +
     ylim(0,max ) +
   labs(subtitle = paste0("CE = ", main_lev[l], " E = ", nse[l]))+
@@ -1195,7 +1145,7 @@ In coexpression analysis, there is no need for class balance, it is in fact bett
 
 This work has outlined and tested a basic use of MASCARA where the relationship between baits and unknown pathway genes is predefined to be positive. The method is not limited to the calculation of positive associations, however performance in detecting negative correlations (indicative of inhibitory or negative feedback processes) or more complex relationships has not been tested within the current simulations. Our approach was based on the structure of the study by Haider with RNAseq measurements of rice plants, however the method is applicable across other organisms and omics types. This holds under the assumption that the set of baits have a multivariate relationship between themselves and multiple other (unknown) genes. These genes are also related to the baits, as in our partially characterised strigolactone pathway example. In untargeted metabolomics datasets under similar experimental conditions these assumptions are also likely to be met.
 
-Taken together our results indicate that the lack of ability to discern different types of variance in a dataset can compromise the detection of true coexpression patterns. MASCARA accounts for the different types of (experimental and ambient) variance and enables finer scale detection of within group variance structure. 
+Taken together our results indicate that the lack of ability to discern different types of variance in a dataset can compromise the detection of true coexpression patterns. MASCARA accounts for the different types of (experimental and ambient) variance and enables finer scale detection of within group variance structure. Code and data for this project are available at https://github.com/BiosystemsDataAnalysis/MASCARA.
 
 
 # Acknowledgements
@@ -1212,7 +1162,7 @@ We acknowledge funding by the Dutch Research Council (NWO/OCW) for the MiCRop Co
 Target projection in PLS2 models has not been described in the literature, we therefore tested our approach against the most common methods for feature selection in PLS namely variable importance in projection (VIP) and selectivity ratio (SR). Here we have similar but reduced simulation set up to the replicate test section; 3 levels of unstructured noise; matrix F-norm sizes (as indicated in the panels). In each of the 3 tests the $\mathbf{T}_S$ is randomised 30 times resulting in different correlation structures between baits and spikes. Target projection using $\mathbf{\bar{q}}$ significantly outperforms the conventional approaches.
 
 
-```{r}
+```{r fig.cap="Feature selection simulation, selectivity ratio; SR, target projection; TP and variable importance in projection (VIP) compareed at 3 levels of noise, indicated in facet titles."}
 Rep_Tests <- readRDS("Noise_Sim_23_07_30_FS_Tests.RDS")  #_3  Noise_Sim_23_06_23_Replicate_Tests.RDS
 names(Rep_Tests) <- c("TP","SR","VIP","SVD1")
 
