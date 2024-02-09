@@ -6,9 +6,20 @@ This repo contains the code to reproduce the MASCARA manuscript.
 Some figures are generated with additional scripts, the png files are inlcuded here.
 The scripts used to create them are contained in order in /run_first.
 
+## Prerequisites
+R version 4.3 is required.
+On windows rtools must be installed: https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html
+
+## Installation
 Dependencies managed with renv.
 
-To get started, clone this repo, go to the /R directory and open a fresh Rstudio session by opening MASCARA_Tutorial.Rmd (or any of the .R or .Rmd files).
+To get started, clone this repo;
+
+```
+git clone https://github.com/BiosystemsDataAnalysis/MASCARA
+```
+
+Then go to the /R directory and open a fresh Rstudio session by opening MASCARA_Tutorial.Rmd (or any of the .R or .Rmd files).
 Doing this will initialise renv for this project.
 
 Once open run this snippet:
