@@ -223,12 +223,12 @@ X <- X[match(meta$ID, rownames(X)),]
 
 # make row annotation
 
-row_ann <- data.frame("Gene" = rep(c("SL","URP"),each = 9))
+row_ann <- data.frame("Pathway" = rep(c("SL","URP"),each = 9))
 rownames(row_ann) <-  c(sls,URPS)         #c(pathway,rownames(ASCA_cands3)[1:9])
 
 ann_colours <- list(g_c = c("P-" = "#F8766D","P+" = "lightblue"),
                     time = c("1" = "#fde725","3" = "#35b779","7" = "#31688e","8" = "#440154"),
-                    Gene = c("SL" = "purple", "URP" = "lightgreen"))
+                    Pathway = c("SL" = "purple", "URP" = "lightgreen"))
 
 h <- t(X[,c(sls,URPS)])#t(X[,c(pathway,rownames(ASCA_cands3)[1:9])])  #psi_ref[,1]
 
@@ -249,7 +249,7 @@ heat <- pheatmap::pheatmap(t(scale(t(h))),  #
                            fontsize = 8,
                            main = "Scaled Gene Expression",silent = T)
 
-png("MASCARA_heatmap.png", res = 150, height = 960, width = 960)
+tiff("Fig3.tif", res = 150, height = 960, width = 960)   #MASCARA_heatmap.png
 grid::grid.newpage()
 grid::grid.draw(heat$gtable)
 dev.off()
@@ -477,7 +477,7 @@ candtab <- gridExtra::tableGrob(CAND_TAB, rows = NULL, theme = theme1)
 ```{r}
 (s + l)
 
-png("rice_s_l.png", width = 960, height = 480)
+tiff("Fig4.tif", width = 960, height = 480)   #rice_s_l.png
 (s + l)
 dev.off()
 ```
@@ -591,7 +591,7 @@ between_r <- qqplot(cbind.data.frame("Candidate" = res_ASCAplus_nb$residuals[,wh
 (within + between)/(within_r + between_r) + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1')) #+ plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
 
 
-png("within_between_example_2.png", res = 150, height = 960, width = 960)
+tiff("Fig2.tif", res = 150, height = 960, width = 960)
 (within + between)/(within_r + between_r) + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1')) #+ plot_layout(heights = unit(c(5), c("cm")), widths = c(5))
 dev.off()
 

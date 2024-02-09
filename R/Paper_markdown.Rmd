@@ -112,9 +112,9 @@ Plant transcriptome studies typically involve the use of designed experiments wh
 
 
 
-```{r nettype, fig.cap= c("Pathway types exemplified, POI; pathway of interest, RP; related pathway, URP; unrelated pathway. Panel A represents hypothetical biological pathways  that are all affected by the experimental design and thus all contain DE genes, here the edges represent real connections between the nodes/genes. Panel B highlights the problem with detecting these pathways when dealing with data from designed experiments, here edges represent putative connections defined by coexpression analysis; black is desired (within network detection), grey non-desired.")}
+```{r nettype, fig.cap= c("Pathway types exemplified, POI; pathway of interest, RP; related pathway, URP; unrelated pathway. Panel A represents hypothetical biological pathways  that are all affected by the experimental design and thus all contain DE genes, here the edges represent real connections between the nodes/genes. Panel B highlights the problem with detecting these pathways when dealing with data from designed experiments, here edges represent putative connections defined by coexpression analysis; black is desired (within network detection), grey is non-desired.")}
 
-a <- knitr::include_graphics("networktypes.png")
+a <- knitr::include_graphics("Fig1.tif")
 a
 ```
 
@@ -130,7 +130,7 @@ From a plant biology point of view, the between-group and the within-group varia
 
 ```{r withinbetween, fig.cap= c("Correlation examples, Pearson’s correlation coefficient (r) indicated in facet titles. Data from @haiderTranscriptomeAnalysisPhosphate2023. X axes, expression levels of MAX1 gene (Os01t0700900–01) in rice, Y axes expression levels of example coexpression candidates, aribitrary units. Top row A-B; *total CoE*, bottom row C-D *within-group CoE* from variance partitioning the data in A-B. Gene pairs in both A and B have strong total correlations. Correlation in A is also exhibited within a group, B has strong total correlations mainly due to the differences between groups. These examples are indistinguishable from eachother without variance partitioning.")}
 
-a <- knitr::include_graphics("within_between_example_2.png")
+a <- knitr::include_graphics("Fig2.tif")   
 a
 
 ```
@@ -204,14 +204,14 @@ This marks the goal of this paper, which is to detect within-group coexpressed g
 
 ```{r Dataset1-Overview, echo = F, fig.cap=c("Real data overview. RNAseq of rice root. Heatmap of SL pathway and example highly differential genes. Data and preprocessing from @haiderTranscriptomeAnalysisPhosphate2023, genes autoscaled i.e. blue indicates no/low expression and red indicates higher expression. IDs with functional annotations in supplementary table 1.")}
 
-heat2 <- knitr::include_graphics("MASCARA_heatmap.png")
+heat2 <- knitr::include_graphics("Fig3.tif")
 heat2
 ```
 
 
 
-```{r ASCA-1, echo = F, out.width = '100%', fig.cap=c("Scores and loadings of the ASCA model of the combined effect (condition + condition:time interaction), model indicates samples and genes relative positions in the designed variance. *g_c* indicates growth condition, *time* indicates days after starvation induction.")}
-knitr::include_graphics("rice_s_l.png")
+```{r ASCA-1, echo = F, out.width = '100%', fig.cap=c("Scores and loadings of the ASCA model of the combined effect (condition + condition:time interaction). Scores: *g_c* indicates growth condition, *time* indicates days after starvation induction. Loadings: POI; SL genes and URP; other highly differential genes (indicated in purple and green respectively) show upregulation in the P- condition compared  to P+.")}
+knitr::include_graphics("Fig4.tif")
 ```
 
 \twocolumn
@@ -220,20 +220,20 @@ knitr::include_graphics("rice_s_l.png")
 
 ## Simulations
 
-The problem in the real dataset is that the nutrient stress applied causes a major effect on many other genes besides our baits and targets . This widespread transcriptional regulation can mask the coexpression patterns of interest due to the large number of genes that are upregulated under the stress condition, making it more difficult to detect genes that are responding to a lesser extent, for example the SL pathway. 
+The problem in the real dataset is that the nutrient stress applied causes a major effect on many other genes besides our baits and targets. This widespread transcriptional regulation can mask the coexpression patterns of interest due to the large number of genes that are upregulated under the stress condition, making it more difficult to detect genes that are responding to a lesser extent, for example the SL pathway. 
 
-The simulations are built upon the results of the ASCA analysis of the combined effect of growth condition and the interaction of growth condition (g_c) and time. As can be seen in Figure \@ref(fig:ASCA-1) there is clear separation between samples due to the experimental factors growth condition (g_c) and time. The variation between the replicates is only small. The green loadings of URP genes are strongly related to the experimental variation due to g_c. The simulated data is created by simulating experimental variation consisting of the main time effect $beta$ and the combined effect ($\alpha + \alpha\beta$), and the Ambient/Residual variation which exists of the structured ambient variance ($S$) and residual variation ($E$) representing measurement error, modeled with normally distributed random values $e_{ij} = \mathcal{N}(0,\sigma^2)$.
+The simulations are built upon the results of the ASCA analysis of the combined effect of growth condition (g_c) and the interaction of growth condition and time. As can be seen in Figure \@ref(fig:ASCA-1) there is clear separation between samples due to the experimental factors growth condition and time. The variation between the replicates is only small. The green loadings of URP genes are strongly related to the experimental variation due to g_c. The simulated data is created by simulating experimental variation consisting of the main time effect $\beta$ and the combined effect ($\alpha + \alpha\beta$), and the Ambient/Residual variation which exists of the structured ambient variance ($\mathbf{S}$) and residual variation ($\mathbf{E}$) representing measurement error, modeled with normally distributed random values $e_{ij} = \mathcal{N}(0,\sigma^2)$.
 
-Each of the sources of variation except the residual variation is simulated as low dimensional variation created from 2 scores ($\mathbf{T}$) and loadings ($\mathbf{P}$). For the experimental variation, the scores matrices $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{T}_{\beta}$ each consist of two orthogonal score vectors and their relative levels are indicated by the colour. The different colours in Figure \@ref(fig:simOverview) represent that the scores are orthogonal to each other. Each small block consists of the same score value for each of the replicates within that condition. For the Ambient variation, the scores $\mathbf{T}_{S}$ are different for each replicate plant. The values in $\mathbf{T}_{S}$ are obtained from a normal distribution with mean 0 and variance 1, i.e. $\mathbf{T}_{S_{ik}} \sim \mathcal{N}(0,1)$. The $\mathbf{T}$ matrices represent the simulated scores for their respective factors. For blues, reds, greys and golds we have 4 different shades representing 4 unique values per factor level (total 8 unique values where reds and golds are sign flipped blues and greys respectively). Similarly oranges and pinks represent a growth condition independent time profile with four unique values.
+Each of the sources of variation except the residual variation is simulated as low dimensional variation created from 2 scores ($\mathbf{T}$) and loadings ($\mathbf{P}$). For the experimental variation, the scores matrices $\mathbf{T}_{\alpha + \alpha\beta}$ and $\mathbf{T}_{\beta}$ each consist of two orthogonal score vectors and their relative levels are indicated by the colour. The different colours in Figure \@ref(fig:simOverview) represent that the scores are orthogonal to each other. Each small block consists of the same score value for each of the replicates within that condition. For the Ambient variation, the scores $\mathbf{T}_{S}$ are different for each replicate plant. The values in $\mathbf{T}_{S}$ are obtained from a normal distribution with mean 0 and variance 1, i.e. $\mathbf{t}_{S_{ik}} \sim \mathcal{N}(0,1)$. The $\mathbf{T}$ matrices represent the simulated scores for their respective factors. For blues, reds, greys and golds we have 4 different shades representing 4 unique values per factor level (total 8 unique values where reds and golds are sign flipped blues and greys respectively). Similarly oranges and pinks represent a growth condition independent time profile with four unique values.
 
-In the loading matrices $\mathbf{P}$, the different coloured blocks indicate different types of genes. The green block represents the bait genes of POI. The black genes represent “unknown” genes from POI or RP. Yellow and purple represent genes from URP that are affected by the experimental variation in different ways. The grey blocks represent very small background variation for those genes, while the white blocks represent that those genes are not affected by that source of background variation. 
+In the loading matrices $\mathbf{P}$, the different coloured blocks indicate different types of genes. The green block represents the bait genes of POI. The black genes represent “unknown” target genes from POI or RP. Yellow and purple represent genes from URP that are affected by the experimental variation in different ways. The grey blocks represent very small background variation for those genes, while the white blocks represent that those genes are not affected by that source of background variation. 
 
-In $\mathbf{P}_{\beta 1}^T$ the baits, spikes (simulated targets; term used throughout simulations) and other DE genes (all genes from POI, RP and URP) along with the remaining first half have similar positive values (represented by light grey) where the other 1000 have positive values in $\mathbf{P}_{\beta 2}^T$ (grey), these are created to emulate the reality of the real data in which many genes are slightly correlated with eachother through the course of development, as well as to account for some nonlinearities which are otherwise ignored by our model. The remaining elements of $\mathbf{P}_{\alpha + \alpha \beta}^T$ and $\mathbf{P}_{\beta}^T$ are populated with zeroes. $\mathbf{P}_S$ only has values for the baits (green) and spike (black) genes. The loading values for the baits and spikes are obtained as $p_{S_jk}^{baits,spikes} \sim \mathcal{N}(0.5,0.2)$, while the loadings for the other genes are 0. 
+In $\mathbf{P}_{\beta 1}^T$ the baits, targets and other DE genes (all genes from POI, RP and URP) along with the remaining first half have similar positive values (represented by light grey) where the other 1000 have positive values in $\mathbf{P}_{\beta 2}^T$ (grey), these are created to emulate the reality of the real data in which many genes are slightly correlated with eachother through the course of development, as well as to account for some nonlinearities which are otherwise ignored by our model. The remaining elements of $\mathbf{P}_{\alpha + \alpha \beta}^T$ and $\mathbf{P}_{\beta}^T$ are populated with zeroes. $\mathbf{P}_S$ only has values for the baits (green) and target (black) genes. The loading values for the baits and targets are obtained as $p_{S_jk}^{baits,targets} \sim \mathcal{N}(0.5,0.2)$, while the loadings for the other genes are 0. 
 
-To finalise, the response values all have an intercept $\mathbf{1}\mu_{j}^T$. Similarly to the real data, the gene expression values for each experimental condition are simulated with three independent replicates per time-condition-combination. Each simulated data Y set thus consists of 24 samples and 2000 genes.
+To finalise, the response values all have an intercept $\mathbf{1}\mu_{j}^T$. Similarly to the real data, the gene expression values for each experimental condition are simulated with three independent replicates per time-condition-combination. Each simulated data Y set thus consists of 24 samples and 2000 genes. 
 
-```{r simOverview, echo=FALSE, fig.cap="Coexpression simulation, simplified overview. Colours correspond to the same genes in the different loading vectors (*P*). Black; baits (known POI genes), green; spikes (unknown POI genes), yellow; DE URP genes, purple DE URP genes with a different profile. In the score vectors (T); Blues, reds, greys and golds represent experimental conditions, oranges and pinks; time. Each of the textures in the ambient/residual part represent a distinct normally distributed set of random values.", out.width = '100%'}
-knitr::include_graphics("Sim_SL_diagram_simplified.png")
+```{r simOverview, echo=FALSE, fig.cap="Coexpression simulation, simplified overview. Colours correspond to the same genes in the different loading vectors ($\\mathbf{P}$). Black; baits (known POI genes), green; targets (unknown POI genes), yellow; DE URP genes, purple DE URP genes with a different profile. In the score vectors ($\\mathbf{T}$); Blues, reds, greys and golds represent experimental conditions, oranges and pinks; time. Each of the textures in the ambient/residual part represent a distinct normally distributed set of random values.", out.width = '100%'}
+knitr::include_graphics("Fig5.tif")
 ```
 
 
@@ -242,7 +242,7 @@ knitr::include_graphics("Sim_SL_diagram_simplified.png")
 
 The first simulation aims to determine how well the methods perform to find coexpressed genes in the presence of a dominant between-group variance structure and increasing numbers of differential URP genes (represented by the yellow block in Figure \@ref(fig:simOverview)) that only have high between-group variance but no within-group variance.
 
-In this simulation we have a set of 4 baits, 12 spike genes and a variable number URP genes. The issue to address is the presence of many differential URPs; those that have strong between group correlation but no within group correlation with the POI. We incrementally increase the number of genes in the yellow block and decrease number of white genes with 0 loadings. As well as the number of DE URPs we also independently control the size of the experimental variance through the parameter *d* in Equation in \@ref(eq:nCER). This approach controls the size of the experimental variance as well as the number of genes responding while keeping a fixed amount of ambient or within group variation.
+In this simulation we have a set of 4 baits, 12 target genes and a variable number URP genes. The issue to address is the presence of many differential URPs; those that have strong between group correlation but no within group correlation with the POI. We incrementally increase the number of genes in the yellow block and decrease number of white genes with 0 loadings. As well as the number of DE URPs we also independently control the size of the experimental variance through the parameter *d* in Equation in \@ref(eq:nCER). This approach controls the size of the experimental variance as well as the number of genes responding while keeping a fixed amount of ambient or within group variation.
 
 \begin{equation}
 \begin{aligned}
@@ -306,7 +306,7 @@ Pb <- X_funced_classic[[3]]
 ```
 
 ```{r, echo = F}
-#create "ref" for feature spike information
+#create "ref" for feature target information
 
 ref <- cbind.data.frame(Feature = colnames(X), P, Pb)
 
@@ -333,7 +333,7 @@ ref$Effect <- factor(ref$Effect, levels = c("Low PC1", "Medium PC1", "High PC1",
 
 ### Ranked correlations
 
-Pearson's correlation coefficient $r_{b\tilde{j}}$ is calculated between all bait genes (b = 1..B) and all other genes ($\tilde{j} = 1...\tilde{J}$). Ranks $\tilde{r}_{b\tilde{j}}$ are assigned for each $r_{b\tilde{j}}$ such that the highest correlation for each bait gene b receives the lowest rank. These ranks are averaged across all baits B (see supplementary equation \@ref(eq:rankcor)).
+Pearson's correlation coefficient $r_{b\tilde{j}}$ is calculated between all bait genes $b = 1..B$ and all other genes ($\tilde{j} = 1...\tilde{J}$). Ranks $\tilde{r}_{b\tilde{j}}$ are assigned for each $r_{b\tilde{j}}$ such that the highest correlation for each bait gene $b$ receives the lowest rank. These ranks are averaged across all baits $B$ (see supplementary equation \@ref(eq:rankcor)).
 
 
 ### ASCA+
@@ -428,15 +428,15 @@ The response matrix $\mathbf{B}$ contains only the baits (relating to the green 
 This model is estimated in our work using the SIMPLS algorithm (@dejongSIMPLSAlternativeApproach1993) as follows:
 
 1. For the $1^{st}$ component:
-   a. Compute the left singular vector $\mathbf{u}_1$ of $\mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k}$
+   a. Compute the left singular vector $\mathbf{u}_1$ of $\mathbf{\tilde{Y}}^{T} \mathbf{B}$
    b. $\mathbf{t}_1 = \mathbf{\tilde{Y}}\mathbf{u}; \mathbf{T} = \left [\mathbf{t}_1\right]$
-   c. $\mathbf{p}_1 = \frac{\mathbf{\tilde{Y}}^T\mathbf{t}^t}{\mathbf{t}^t\mathbf{t}}$
-2. For the following components:
-   a. Compute the left singular vector $\mathbf{u}_k$ of $(\mathbf{I} - \mathbf{P}(\mathbf{P}^T\mathbf{P})^{-1}\mathbf{P})\mathbf{\tilde{Y}}_{k}^{T} \mathbf{B}_{k}$
+   c. $\mathbf{p}_1 = \frac{\mathbf{\tilde{Y}}^T\mathbf{t}^t}{\mathbf{t}^t\mathbf{t}}; \mathbf{P} = \left [\mathbf{p}_1\right]$
+2. For the following components $k = 2...K$:
+   a. Compute the left singular vector $\mathbf{u}_k$ of $(\mathbf{I} - \mathbf{P}(\mathbf{P}^T\mathbf{P})^{-1}\mathbf{P})\mathbf{\tilde{Y}}^{T} \mathbf{B}$
    b. $\mathbf{t}_k = \mathbf{\tilde{Y}}\mathbf{u}_k; \mathbf{T} = \left [\mathbf{T}|\mathbf{t}_k\right]$
    c. $\mathbf{p}_k = \frac{\mathbf{\tilde{Y}}^T\mathbf{t}_{k}^t}{\mathbf{t}_{k}^t\mathbf{t}_{k}}; \mathbf{P} = \left [\mathbf{P}|\mathbf{p}_k\right]$
 
-Under the conditions of orthogonal scores; $\mathbf{t}_{k}^{T}\mathbf{t}_{k} = 0$ and normalised weights; $\mathbf{u}_{k}^T\mathbf{u}_{k{}} = 1$ . Loadings for B can be obtained with a least squares step $\mathbf{Q} = (\mathbf{T}^T\mathbf{T})^{-1}\mathbf{T}^T\mathbf{B}$.
+Under the conditions of orthogonal scores; $\mathbf{t}_{k}^{T}\mathbf{t}_{k+1} = 0$ and normalised weights; $\mathbf{u}_{k}^T\mathbf{u}_{k{}} = 1$ . Loadings for $\mathbf{B}$ can be obtained with a least squares step $\mathbf{Q} = (\mathbf{T}^T\mathbf{T})^{-1}\mathbf{T}^T\mathbf{B}$.
    
 In the following simulations and application the number of components calculated by PLS2 is set to 2 to create an interpretable model. 
 
@@ -451,7 +451,7 @@ In this work genes are selected in both ASCA+ and PLS through VIP which is a way
 \end{aligned}(\#eq:vip)
 \end{equation}
 
-Where k=1...K represents the number of components in the respective models, j indexes a gene,  $H$ is substituted for the loadings $\mathbf{P}_{\alpha + \alpha\beta}^T$ or weights $\mathbf{U}$ (for ASCA+ and PLS respectively) and VE is the variance explained, where $VE_{k}$ is the amount of variance explained by component k and $VE_{total}$ is the variance explained by the whole model. In ASCA+ we calculate the VIP scores in the latent space of \(\bm{Y}_{\alpha + \alpha\beta}\) as described in @thielASCAAPCAExtensions2017. In PLS we use the VE from the latent space of \(\bm{B}\) using the weights ($\mathbf{U}$) from the latent space of the predictor matrix \(\bm{Y}\).
+Where $k=1...K$ represents the number of components in the respective models, $j$ indexes a gene,  $H$ is substituted for the loadings $\mathbf{P}_{\alpha + \alpha\beta}^T$ or weights $\mathbf{U}$ (for ASCA+ and PLS respectively) and VE is the variance explained, where $VE_{k}$ is the amount of variance explained by component k and $VE_{total}$ is the variance explained by the whole model. In ASCA+ we calculate the VIP scores in the latent space of \(\bm{Y}_{\alpha + \alpha\beta}\) as described in @thielASCAAPCAExtensions2017. In PLS we use the VE from the latent space of \(\bm{B}\) using the weights ($\mathbf{U}$) from the latent space of the predictor matrix \(\bm{Y}\).
 
 
 
@@ -471,11 +471,11 @@ To evaluate performance we use $log_{2}$ geometric mean rank ($log_{2}(GMR)$; $\
 
 \begin{equation}
 \begin{aligned}
-\bar{\gamma} = log_{2}((\prod_{j_{spike}=1}^{J_{spike}}\gamma_{j_{spike}})^{1/J_{spike}})
+\bar{\gamma} = log_{2}((\prod_{j_{target}=1}^{J_{target}}\gamma_{j_{target}})^{1/J_{target}})
 \end{aligned}(\#eq:GMR)
 \end{equation}
 
-for $J_{spike}$ spikes. A lower $\bar{\gamma}$ indicates better performance.
+for $J_{target}$ targets. A lower $\bar{\gamma}$ indicates better performance.
 
 
 # Results
@@ -647,11 +647,15 @@ for(i in 1:length(methods))
 
 ## Simulation 1: Combined effect size and number of differential genes
 
-For this simulation we have some experimental variance for the combined effect and time ($\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T$ and $\bm{T}_{\beta}\bm{P}_{\beta}^T$ respectively) a fixed amount of random noise \(\bm{E}\) and a fixed amount of structured ambient/residual variance $\bm{T}_S\bm{P}_{S}^T$, within which our 4 baits and 12 spikes share a correlation structure. This reflects the situation expected from the real data example - drastic effect caused by nutrient deficiency, which also activates the SL pathway. The POI genes are expected to share some variance that is independent to the experiment, the 4 baits and 12 spikes load on to the structured part of the noise $\bm{T}_S\bm{P}_{S}^T$.
+For this simulation we have some experimental variance for the combined effect and time ($\bm{T}_{\alpha + \alpha\beta}\bm{P}_{\alpha + \alpha\beta}^T$ and $\bm{T}_{\beta}\bm{P}_{\beta}^T$ respectively) a fixed amount of random noise \(\bm{E}\) and a fixed amount of structured ambient/residual variance $\bm{T}_S\bm{P}_{S}^T$, within which our 4 baits and 12 targets share a correlation structure. This reflects the situation expected from the real data example - drastic effect caused by nutrient deficiency, which also activates the SL pathway. The POI genes are expected to share some variance that is independent to the experiment, the 4 baits and 12 targets load on to the structured part of the noise $\bm{T}_S\bm{P}_{S}^T$.
 
 ```{r tc, echo = F, fig.cap= "Results of simulation 1 for all 4 methods. Log2 geometric mean rank (log2(GMR)) as a function of the number of differentially expressed URP genes (x-axis) and combined effect size (y axis); ($CE = \\|\\mathbf{T}_{\\alpha + \\alpha\\beta}\\mathbf{P}_{\\alpha + \\alpha\\beta}^T\\|_F$), lower log2(GMR); dark blue, indicates better performance. ASCA model calculated per equation \\@ref(eq:ascamodel), PLS model per equation \\@ref(eq:plsmodel)."}
 wrap_plots(plots) + plot_layout(guides = "collect")
 
+
+# tiff("Fig6.tif", res = 150, height = 960, width = 960)
+# wrap_plots(plots) + plot_layout(guides = "collect")
+# dev.off()
 ```
 
 We can see in Figure \@ref(fig:tc) that MASCARA was neither affected by the presence of an increasing number of non-pathway DE genes nor the size of this effect. Correlations, ASCA and PLS, however, all showed the expected breakdown in performance due to the injection of more DE URP genes. This was the expected result as the experimental between group variance is removed with MASCARA.
@@ -774,18 +778,22 @@ test_patch <- (One_Balance[[1]] + One_Balance[[2]] + One_Balance[[3]]  + ylab(NU
 # One_Balance[[1]] + One_Balance[[2]]/
 #   One_Balance[[3]] + plot_layout(guides = "collect")
 
-# ps1 <- grid.arrange(ps, left = "log2(GMR)", bottom = "Replicate Number                     ")
 
-a <- knitr::include_graphics("replication_res.png")
+# tiff("Fig7.tif")
+# ps1 <- grid.arrange(ps, left = "log2(GMR)", bottom = "Replicate Number                     ")
+# dev.off()
+
+a <- knitr::include_graphics("Fig7.tif")
 a
+
 
 
 ```
 
 
-It was expected that all geometric mean ranks converge towards a minimum with increasing numbers of replicates, see \@ref(fig:repres). Perfect detection of 12 spikes in top 12 candidates is achieved with a log2 geometric mean rank of 2.4, MASCARA was able to achieve this, however, the other methods were perturbed by the presence of the 30 differential URP genes. With more replicates MASCARA always outperforms competitors. With higher values of *d* (larger combined effect size) (CE) MASCARA outperforms the other methods but its performance is affected by amount of random noise (E) size indicated by *l*. 
+It was expected that all geometric mean ranks converge towards a minimum with increasing numbers of replicates, see \@ref(fig:repres). Perfect detection of 12 targets in top 12 candidates is achieved with a log2 geometric mean rank of 2.4, MASCARA was able to achieve this, however, the other methods were perturbed by the presence of the 30 differential URP genes. With more replicates MASCARA always outperforms competitors. With higher values of *d* (larger combined effect size) (CE) MASCARA outperforms the other methods but its performance is affected by amount of random noise (E) size indicated by *l*. 
 
-In simulation 2 we fixed the number of differential URP genes to 30, however this is less than 2% of the total number of genes in each dataset. In the real data example more than 10% of of the total number of genes are differentially expressed. As shown in simulation 1 (Figure \@ref(fig:tc)) higher numbers of DE URP genes results in higher log2 geometric mean rank (log2(GMR)) of the spikes for correlations, ASCA and PLS.  MASCARA is designed specifically to mitigate the effect of large numbers of DE URP genes. Here we show that this is achieved.
+In simulation 2 we fixed the number of differential URP genes to 30, however this is less than 2% of the total number of genes in each dataset. In the real data example more than 10% of of the total number of genes are differentially expressed. As shown in simulation 1 (Figure \@ref(fig:tc)) higher numbers of DE URP genes results in higher log2 geometric mean rank (log2(GMR)) of the targets for correlations, ASCA and PLS.  MASCARA is designed specifically to mitigate the effect of large numbers of DE URP genes. Here we show that this is achieved.
 
 
 # Real Data Applications
@@ -1070,6 +1078,11 @@ mt <- mt[which(mt$group %in% c("SL-SL","SL-Other")),]
 colnames(mt)[3] <- "Correlation"
 dens <- ggplot(mt, aes(Correlation, colour = group)) + geom_density() + theme_bw()
 dens
+
+# tiff("Fig8.tif")
+# dens
+# dev.off()
+
 ```
 
 ```{r}
@@ -1124,7 +1137,11 @@ plot2 <- wrap_plots(qqplots_spls[c(2:4)]) + plot_annotation(title = "MASCARA") #
 PLOT <- plot1/plot2 + plot_layout(guides = "collect",tag_level = 'new') + plot_annotation(tag_levels = c('A','1'))
 # ggsave("within_between_example.png", PLOT)
 
-a <- knitr::include_graphics("within_between_example.png")
+# tiff("Fig9.tif")
+# PLOT
+# dev.off()
+
+a <- knitr::include_graphics("Fig9.tiff")
 a
 
 ```
@@ -1159,7 +1176,7 @@ We acknowledge funding by the Dutch Research Council (NWO/OCW) for the MiCRop Co
 
 # Supplementary
 
-Target projection in PLS2 models has not been described in the literature, we therefore tested our approach against the most common methods for feature selection in PLS namely variable importance in projection (VIP) and selectivity ratio (SR). Here we have similar but reduced simulation set up to the replicate test section; 3 levels of unstructured noise; matrix F-norm sizes (as indicated in the panels). In each of the 3 tests the $\mathbf{T}_S$ is randomised 30 times resulting in different correlation structures between baits and spikes. Target projection using $\mathbf{\bar{q}}$ significantly outperforms the conventional approaches.
+Target projection in PLS2 models has not been described in the literature, we therefore tested our approach against the most common methods for feature selection in PLS namely variable importance in projection (VIP) and selectivity ratio (SR). Here we have similar but reduced simulation set up to the replicate test section; 3 levels of unstructured noise; matrix F-norm sizes (as indicated in the panels). In each of the 3 tests the $\mathbf{T}_S$ is randomised 30 times resulting in different correlation structures between baits and targets. Target projection using $\mathbf{\bar{q}}$ significantly outperforms the conventional approaches.
 
 
 ```{r fig.cap="Feature selection simulation, selectivity ratio; SR, target projection; TP and variable importance in projection (VIP) compareed at 3 levels of noise, indicated in facet titles."}
@@ -1181,6 +1198,9 @@ mRES <- mRES[-which(mRES$Method == "SVD1"),]
 ggplot(mRES, aes(x = Method, y = RP)) +
   geom_boxplot() +
   facet_grid( ~E)
+
+
+
 
 ```
 

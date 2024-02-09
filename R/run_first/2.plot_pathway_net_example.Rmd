@@ -370,9 +370,9 @@ badplot <- ggraph(tidynet, layout = coords) +
 
 ```{r}
 
-# png("../networktypes.png", height = 3600, width = 4800, res = 700)
+tiff("../Fig1.tif", height = 3600, width = 4800, res = 700)
 realplot + badplot + plot_annotation("Pathway Types", tag_levels = 'A') + plot_layout(guides = "collect")
-# dev.off()
+dev.off()
 
 ```
 
