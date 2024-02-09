@@ -156,27 +156,27 @@ coords <- layout_with_kk(g)  #to fix coordinates of nodes
 library(tidygraph)
 library(ggraph)
 
-type <- V(g)$name
+Net <- V(g)$name
 ```
 
 ```{r}
-id <- c(1:length(type))
+id <- c(1:length(Net))
 
 
 VIP <- rep(10,length(V(g)))
 
 
-type[which(type %in% baits)] <- "POI"
-type[which(type %in% spikes)] <- "RP"
+Net[which(Net %in% baits)] <- "POI"
+Net[which(Net %in% spikes)] <- "RP"
 
-type[-which(type %in% c("POI","RP"))] <- "URP"
+Net[-which(Net %in% c("POI","RP"))] <- "URP"
 
 
 temp <- paste0("X_",c(1991:1992,1989,1985))   #501:510
 
-Baits <- names(V(g))
-Baits[-which(Baits %in% temp)] <- "Other"
-Baits[which(Baits %in% temp)] <- "baits"
+Gene <- names(V(g))
+Gene[-which(Gene %in% temp)] <- "Other"
+Gene[which(Gene %in% temp)] <- "Baits"
 
 
 tidynet <- as_tbl_graph(g)
@@ -187,11 +187,11 @@ tidynet <- tidynet %>%
 
 tidynet <- tidynet %>%
   activate(nodes) %>%
-  mutate(type = type)
+  mutate(Net = Net)
 
 tidynet <- tidynet %>%
   activate(nodes) %>%
-  mutate(Baits = Baits)
+  mutate(Gene = Gene)
 
 tidynet <- tidynet %>%
   activate(nodes) %>%
@@ -214,10 +214,10 @@ realplot <- ggraph(tidynet, layout = coords) +
   geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) +  
   scale_edge_color_manual(values = edge_colours, guide = "none") +
   geom_node_point(
-    aes(size = VIP, color = type, shape = Baits), show.legend=FALSE         #CHANGE THIS
+    aes(size = VIP, color = Net, shape = Gene), show.legend=FALSE        #CHANGE THIS
   ) +
   geom_node_point(
-    aes(color = type)    #, shape = Baits
+    aes(color = Net, shape = Gene)    #, shape = Baits
   ) +
   scale_color_manual(values = colours) + 
     scale_shape_manual(values = c(17,16)) +   #18,20
@@ -246,13 +246,13 @@ rownames(adj) <- colnames(cand_vals)
 colnames(adj) <- colnames(cand_vals)
 
 
-adj[type == "URP", type == "URP"]  <- 1
-adj[type %in% c("POI","RP"), type %in% c("POI","RP")] <- 1
+adj[Net == "URP", Net == "URP"]  <- 1
+adj[Net %in% c("POI","RP"), Net %in% c("POI","RP")] <- 1
 
 
 
-adj[type %in% c("POI","RP"), type == "URP"] <- -1
-adj[type == "URP", type %in% c("POI","RP")] <- -1
+adj[Net %in% c("POI","RP"), Net == "URP"] <- -1
+adj[Net == "URP", Net %in% c("POI","RP")] <- -1
 ```
 
 ```{r}
@@ -308,8 +308,8 @@ V(g)$name <- V(g)$name
 V(g)$shape <- "sphere"
 
 
-#define correctly ordered type type
-type <- V(g)$name
+#define correctly ordered type Net
+Net <- V(g)$name
 
 
 
@@ -317,15 +317,15 @@ type <- V(g)$name
 ```
 
 ```{r}
-id <- c(1:length(type))
+id <- c(1:length(Net))
 
 
 VIP <- rep(10,length(V(g)))
 
-type[which(type %in% baits)] <- "POI"
-type[which(type %in% spikes)] <- "RP"
+Net[which(Net %in% baits)] <- "POI"
+Net[which(Net %in% spikes)] <- "RP"
 
-type[-which(type %in% c("POI","RP"))] <- "URP"
+Net[-which(Net %in% c("POI","RP"))] <- "URP"
 
 
 
@@ -337,7 +337,7 @@ tidynet <- tidynet %>%
 
 tidynet <- tidynet %>%
   activate(nodes) %>%
-  mutate(type = type)
+  mutate(Net = Net)
 
 
 colours = c("POI" = "purple", "RP" = "orange", "URP" = "lightgreen")  
@@ -354,10 +354,10 @@ badplot <- ggraph(tidynet, layout = coords) +
   geom_edge_link(aes(colour = association, alpha = weight), show.legend=FALSE) +   #, linetype = "dashed"
   scale_edge_color_manual(values = edge_colours, guide = "none") +
   geom_node_point(
-    aes(size = VIP, color = type, shape = Baits), show.legend=FALSE
+    aes(size = VIP, color = Net, shape = Gene), show.legend=FALSE
   ) +
   geom_node_point(
-    aes(color = type)
+    aes(color = Net, shape = Gene)
   ) +
   scale_color_manual(values = colours) + 
       scale_shape_manual(values = c(17,16)) +   #18,20
