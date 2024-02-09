@@ -13,7 +13,13 @@ On windows rtools must be installed: https://cran.r-project.org/bin/windows/Rtoo
 ## Installation
 Dependencies managed with renv.
 
-To get started, clone this repo, go to the /R directory and open a fresh Rstudio session by opening MASCARA_Tutorial.Rmd (or any of the .R or .Rmd files).
+To get started, clone this repo;
+
+```
+git clone https://github.com/BiosystemsDataAnalysis/MASCARA
+```
+
+Then go to the /R directory and open a fresh Rstudio session by opening MASCARA_Tutorial.Rmd (or any of the .R or .Rmd files).
 Doing this will initialise renv for this project.
 
 Once open run this snippet:
