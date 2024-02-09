@@ -7,7 +7,8 @@ Some figures are generated with additional scripts, the png files are inlcuded h
 The scripts used to create them are contained in order in /run_first.
 
 ## Prerequisites
-R version 4.3 is required, as well as the associated rtools https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html
+R version 4.3 is required.
+On windows rtools must be installed: https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html
 
 ## Installation
 Dependencies managed with renv.
