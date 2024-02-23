@@ -72,7 +72,7 @@ sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, plot = TRUE,
                         EffectSize = c(X_a_ab = 1.8, time = 1, E = 10, mu = 1, Struc_E = 1), 
                         struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
                         b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, 
-                        Experiment_responders = Experiment_responders, struc_seed = 127)[[1]] 
+                        Experiment_responders = Experiment_responders, struc_seed = 127)[[1]]
 hist(sim_data)
 ```
 
