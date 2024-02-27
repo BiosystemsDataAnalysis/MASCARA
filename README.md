@@ -33,4 +33,6 @@ renv::restore(prompt = FALSE)
 
 This should ensure all required packages are installed.
 
+It is then necessary to restart rstudio, and reopen (by opening opening MASCARA_Tutorial.Rmd for example).
+
 The gtf file Oryza_sativa.IRGSP-1.0.50.gtf is required for annotation of Haider data, this is not necessary for running Paper_markdown.Rmd but can be obtained from: https://rapdb.dna.affrc.go.jp/download/irgsp1.html.
