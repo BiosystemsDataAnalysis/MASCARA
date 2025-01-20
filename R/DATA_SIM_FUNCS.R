@@ -2160,6 +2160,57 @@ MASCARA_DEV <- function(resids,ref, baits){
 
 
 
+MASCARA4_test <- function(resids, baits, spikes){
+  #target projection
+  spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                         resids[,which(colnames(resids) %in% baits)], ncomp = 2)
+  
+  #####
+  y <- colMeans(spls_res$Yloadings)
+  U <- spls_res$projection
+  UTP <- (dot(t(U),y)/dot(y,y))
+  
+  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
+  RP <- prod(which(rownames(sPLS_bait_cands) %in% spikes))^(1/length(spikes))
+  
+  
+  return(list(RP, sPLS_bait_cands,UTP))
+}
+
+WGCNA4_test <- function(data, baits, spikes){
+  
+  softPower <- 6
+  adjacency <- adjacency(data, power = softPower)
+  
+  TOM <- TOMsimilarity(adjacency)
+  TOM.dissimilarity <- 1-TOM
+  geneTree <- hclust(as.dist(TOM.dissimilarity), method = "average")
+  Modules <- cutreeDynamic(dendro = geneTree, distM = TOM.dissimilarity, deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = 12)
+  
+  MElist <- moduleEigengenes(data, colors = ModuleColors)
+  MEs <- MElist$eigengenes
+  ME.dissimilarity = 1-cor(MElist$eigengenes, use="complete")
+  
+  merge <- mergeCloseModules(data, ModuleColors, cutHeight = .25)
+  
+  mergedMEs = merge$newMEs
+  
+  
+  sKME <- signedKME(data, mergedMEs)
+  
+  #feature selection
+  q_bar <- colMeans(sKME[baits,])
+  R <- sKME[!rownames(sKME) %in% baits,]
+  R_TP <- (dot(t(R),q_bar)/dot(q_bar,q_bar))
+  
+  Candidates <- as.data.frame(R_TP[order(R_TP, decreasing = TRUE)])
+  
+  RP <- prod(which(rownames(Candidates) %in% spikes))^(1/length(spikes))
+  
+  return(list(RP, Candidates, mergedMEs, sKME))
+  
+  
+}
 
 
 
@@ -2277,10 +2328,10 @@ Create_Core_DEV_2 <- function(nreps, meta, irr_spikes = TRUE, struc_resid = FALS
     l_X <- l_X/norm(l_X, type = "F")
     
     
-    set.seed(1288)
+    set.seed(ts + 3000)  #1288
     e_p1 <- c(rep(0,1984), abs(abs(rnorm(16,sd = 0.2, mean = 0.5)))) # rnorm(8, sd = sd(l_X[1,]))l_X[1,] rep(0.5,16)
     # rtruncnorm(12, a = 0.1, b = 0.8, mean = 0.3)
-    set.seed(128)
+    set.seed(ts + 30000)  #128
     # e_p2 <- c(rep(0,0), rnorm(2000))  #make dependent on length of a_ab_p1
     e_p2 <- c(rep(0,1984), abs(rnorm(16,sd = 0.2, mean = 0.5))) #rnorm(8, sd = sd(l_X[2,])) l_X[2,] rep(0.5,16)
     e_p3 <- c(rep(0,1984), abs(rnorm(16,sd = 0.2, mean = 0.5))) # extra some baits plus spikes
@@ -2353,6 +2404,250 @@ Create_Core_DEV_2 <- function(nreps, meta, irr_spikes = TRUE, struc_resid = FALS
   
   Effects <- list("main" = X_a_ab, "cofactor" = time, "residual" = E, "ambient" = Struc_E, "noise" = Non_Struc_E)
   # norms <- c("main" = norm_X_a_ab, "cofactor" = norm_time, "struc_E" = norm_Struc_E, "Non_struc_E" = norm_Non_Struc_E)
+  
+  if(plot == TRUE){
+    
+    t1 <- ggplot(a_ab, aes(x = time, y = PC1, group=growth_condition, colour=growth_condition)) +
+      geom_line() +
+      theme_classic() +
+      theme(legend.position = "none")
+    t2 <- ggplot(a_ab, aes(x = time, y = PC2, group=growth_condition, colour=growth_condition)) +
+      geom_line() +
+      theme_classic() +
+      theme(legend.position = "none")
+    P_anno <- cbind.data.frame(c(1:dim(P)[1]), P)
+    colnames(P_anno) <- c("Feature", "PC1", "PC2")
+    p1 <- ggplot(P_anno[which(P_anno$PC1 != 0),], aes(x = Feature, y = PC1)) +
+      geom_bar(stat="identity") +
+      theme_classic() +
+      # scale_x_discrete(guide = guide_axis(check.overlap = TRUE)) 
+      theme(axis.text.x = element_blank())
+    p2 <- ggplot(P_anno[which(P_anno$PC2 != 0),], aes(x = Feature, y = PC2)) +
+      geom_bar(stat="identity") +
+      theme_classic() +
+      # scale_x_discrete(guide = guide_axis(check.overlap = TRUE)) 
+      theme(axis.text.x = element_blank())
+    
+    PLOT <- (t1 | t2) / (p1 | p2) + plot_annotation(title = "Simulated data, scores and loadings in PCs 1 and 2")
+    
+    return(list(X,P,Pb,a_ab,PLOT, X_a_ab,time, Struc_E ))
+    
+  }
+  else if (score_plot == T){
+    t1 <- ggplot(a_ab, aes(x = time, y = PC1, group=growth_condition, colour=growth_condition)) +
+      geom_line() +
+      ylim(-3,3) + 
+      scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
+      theme_classic() +
+      theme(legend.position = "none")
+    
+    return(list(X,P,Pb,a_ab,t1))
+  }
+  else{
+    return(list(X,P,Pb,a_ab,"Effects" = Effects, norms))  #Effect inputs here?..
+  }
+  
+}
+
+
+Create_Core_DEV_3 <- function(nreps, meta, irr_spikes = TRUE, struc_resid = FALSE, 
+                              a_sigma = c(1.5,0.75,0.6,0.6), b_sigma = c(1,0.8), e_sigma = c(1,0.8,0.5),
+                              noise_sd = 0.75, EffectSize = c(X_a_ab = 1, time = 0.5, E = 0.5, mu = 1, Struc_E = 1), 
+                              SCORE_SEED = 1000, plot = FALSE, score_plot = FALSE, Experiment_responders = 12, ts = 1234, struc_seed = 127, baits = 4, spikes = 12){
+  
+  POI = baits + spikes
+  
+  if(struc_resid == TRUE){
+    set.seed(ts)
+    targets_a_ab <- abs(rnorm(spikes,mean = 0.25, sd = 0.25))
+  }
+  else{
+    targets_a_ab <- rep(0,spikes)
+  }
+  
+  # set.seed(1)
+  set.seed(SCORE_SEED)
+  
+  a_ab <- as.data.frame(svd(matrix(rnorm(16), nrow = 4))$u)
+  
+  a_ab_PC1_small <- a_ab[,1]
+  
+  a_ab <- a_ab[rep(rownames(a_ab), each = nreps),]
+  a_ab <- rbind.data.frame(a_ab, a_ab*-1)
+  
+  a_ab_p1 <- c(rep(0,24),                                                         
+               rep(0,2000 - (24+POI+(Experiment_responders))),
+               abs(rnorm((Experiment_responders + baits),mean = 1, sd = 0.25)), 
+               targets_a_ab)
+  
+  #print(length(a_ab_p1))
+  
+  if(irr_spikes == FALSE){
+    a_ab_p2 <- c(rep(0,length(a_ab_p1)))
+    a_ab_p3 <- c(rep(0,length(a_ab_p1)))
+    a_ab_p4 <- c(rep(0,length(a_ab_p1)))
+  }
+  else{
+    a_ab_p2 <- c(rep(0,485),rnorm(15,mean = -0.5, sd = 0.25), rnorm(15,mean = 0.5, sd = 0.25), rep(0,1485))
+    a_ab_p3 <- c(rep(0,185),rnorm(15,mean = -0.5, sd = 0.25), rnorm(15,mean = 0.5, sd = 0.25), rep(0,1785))
+    a_ab_p4 <- c(rep(0,85),rnorm(15,mean = -0.5, sd = 0.25), rnorm(15,mean = 0.5, sd = 0.25), rep(0,1885))
+  }
+  P <- cbind(a_ab_p1, a_ab_p2, a_ab_p3, a_ab_p4)
+  
+  P_sigma <- P %*% diag(a_sigma)
+  
+  ############# B
+  ##CREATE SCORES FOR PC1 TIME
+  set.seed(22)
+  b_PC1_small <- Create_Orthogonal(a_ab_PC1_small)#/400
+  b_PC1_small %*% a_ab_PC1_small
+  
+  ##CREATE SCORES FOR PC2 TIME
+  b_PC2_small <- Create_Orthogonal(b_PC1_small)
+  b_PC1 <- rep(b_PC1_small, each = nreps, times = 2)
+  b_PC2 <- rep(b_PC2_small, each = nreps, times = 2)
+  
+  b <- cbind.data.frame(meta[,1:2],b_PC1,b_PC2)
+  colnames(b)[3:4] <- c("PC1","PC2")
+  
+  #CREATE LOADINGS TIME
+  b_p1 <- c(rep(0.1,1000), rep(0,1000)  )  #make dependent on length of a_ab_p1
+  b_p2 <- c(rep(0,1000), rep(0.1,1000))  #make dependent on length of a_ab_p1
+  Pb <- cbind(b_p1, b_p2)
+  
+  Pb_sigma <- Pb %*% diag(b_sigma)
+  
+  
+  # browser()
+  ################## MATRIX MULTIPLICATION OF SCORES AND LOADINGS PER EFFECT MATRIX
+  X_a_ab <- data.matrix(a_ab[]) %*% t(P_sigma)
+  X_a_ab <- EffectSize["X_a_ab"] * (X_a_ab/norm(X_a_ab, type = "F"))
+  norm_X_a_ab <- norm(X_a_ab, type = "F")
+  
+  time <- data.matrix(b[c("PC1","PC2")]) %*% t(Pb_sigma)
+  time <- EffectSize["time"] * (time/norm(time, type = "F"))
+  norm_time <- norm(time, type = "F")
+  
+  
+  
+  ##CREATE FEATURE MEAN VALUES and ensure they are above 0
+  #set.seed here? 
+  mu <- EffectSize["mu"] * matrix(rep(rnorm(dim(X_a_ab)[2], mean = mean(X_a_ab)), each = nrow(meta)), nrow = nrow(meta))
+  mu <- mu + abs(min(mu))
+  X_a_ab_mu <- X_a_ab + mu
+  
+  
+  ####CREATE E
+  
+  if(struc_resid == TRUE){
+    
+    #make structured residuals instead of random noise:
+    set.seed(struc_seed)
+    
+    # t_l <- svd(matrix(rnorm(2000*24), nrow = 24))$u
+    
+    t_l <- matrix(rnorm(24*3), nrow = 24)
+    
+    e_PC1 <- t_l[,1]
+    e_PC2 <- t_l[,2]
+    e_PC3 <- t_l[,3]
+    
+    
+    
+    #create random correlated effect in t_l instead of the random matrix from above
+    l_t <- c(1.5,1)
+    l_p <- abs(rnorm(POI,sd = 1))
+    l_x <- l_t %*% t(l_p)
+    
+    set.seed(1277)
+    l_t2 <- Create_Orthogonal(l_t)
+    l_p2 <- abs(rnorm(POI,sd =0.6))
+    l_x2 <- l_t2 %*% t(l_p2)
+    
+    l_X <- l_x + l_x2
+    l_X <- l_X/norm(l_X, type = "F")
+    
+    
+    set.seed(ts + 3000)  #1288
+    e_p1 <- c(rep(0,(2000-POI)), abs(abs(rnorm(POI,sd = 0.2, mean = 0.5)))) # rnorm(8, sd = sd(l_X[1,]))l_X[1,] rep(0.5,16)
+    # rtruncnorm(12, a = 0.1, b = 0.8, mean = 0.3)
+    set.seed(ts + 30000)  #128
+    # e_p2 <- c(rep(0,0), rnorm(2000))  #make dependent on length of a_ab_p1
+    e_p2 <- c(rep(0,(2000-POI)), abs(rnorm(POI,sd = 0.2, mean = 0.5))) #rnorm(8, sd = sd(l_X[2,])) l_X[2,] rep(0.5,16)
+    e_p3 <- c(rep(0,(2000-POI)), abs(rnorm(POI,sd = 0.2, mean = 0.5))) # extra some baits plus spikes
+    
+    
+    Pe <- cbind(e_p1, e_p2, e_p3)
+    colnames(Pe) <- c("PC1","PC2", "PC3")
+    
+    Pe_sigma <- Pe %*% diag(e_sigma)
+    e <- cbind.data.frame(meta[,1:2], e_PC1, e_PC2, e_PC3)
+    colnames(e)[c(3,4,5)] <- c("PC1","PC2","PC3")
+    
+    
+    #################
+    
+    ET <- data.matrix(e[c("PC1","PC2","PC3")]) %*% t(Pe_sigma)
+    #svd(ET)$u as input alternatively
+    
+    #matrix linear regression
+    A <- data.matrix(cbind.data.frame(a_ab[],b[c("PC1","PC2")]))
+    B <- solve(t(A)%*%A) %*% t(A) %*% ET
+    
+    E <- ET - (A %*% B)  
+    
+    set.seed(10021)
+    Struc_E <- E
+    Struc_E <- EffectSize["Struc_E"] * (Struc_E/norm(Struc_E, type = "F"))
+    norm_Struc_E <- norm(Struc_E, type = "F")
+    
+    
+    #dim(Struc_E)
+    #print(E[,1] %*% time[,1])
+    #print(time[,1] %*% X_a_ab[,1])
+    
+    
+    Non_Struc_E <- matrix(rnorm(dim(X_a_ab)[1] * dim(X_a_ab)[2], mean = 0, sd = noise_sd), nrow = nrow(meta))
+    Non_Struc_E <- EffectSize["E"] * (Non_Struc_E/norm(Non_Struc_E, type = "F"))
+    norm_Non_Struc_E <- norm(Non_Struc_E, type = "F")
+    
+    
+    E <- Struc_E + Non_Struc_E
+    
+    norms <- c("main" = norm_X_a_ab, "cofactor" = norm_time, "struc_E" = norm_Struc_E, "Non_struc_E" = norm_Non_Struc_E)
+    
+    ############
+    
+  }
+  else{
+    
+    ## some random noise - i.e. differences between replicates
+    set.seed(1001)  #previously 101
+    E <- matrix(rnorm(dim(X_a_ab)[1] * dim(X_a_ab)[2], mean = 0, sd = noise_sd), nrow = nrow(meta))
+    
+    
+    E <- EffectSize["E"] * (E/norm(E, type = "F"))
+    norm_Non_Struc_E <- norm(E, type = "F")
+    
+    
+    #change this 
+    norms <- c("main" = norm_X_a_ab, "cofactor" = norm_time, "Non_struc_E" = norm_Non_Struc_E)
+    
+  }
+  
+  ##ADD ALL TOGETHER TO CREATE "CORE"
+  X_no.time <- X_a_ab_mu + E
+  X <- X_no.time + time
+  X <- t(((t(X) + abs(colMins(X)))))
+  colnames(X) <- paste0("X_",c(1:dim(X)[2]))
+  
+  
+  Effects <- list("main" = X_a_ab, "cofactor" = time, "residual" = E, "ambient" = Struc_E, "noise" = Non_Struc_E)
+  # norms <- c("main" = norm_X_a_ab, "cofactor" = norm_time, "struc_E" = norm_Struc_E, "Non_struc_E" = norm_Non_Struc_E)
+  
+  
+  
+  
   
   if(plot == TRUE){
     

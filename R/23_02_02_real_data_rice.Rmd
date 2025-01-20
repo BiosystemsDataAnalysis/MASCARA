@@ -21,9 +21,9 @@ source("DATA_SIM_FUNCS.R")
 ```
 
 ```{r, echo = FALSE, include=FALSE}
+# getwd()
 library(devtools)
 library(ggplot2)
-library(MetStaT)
 library(gASCA)
 library(patchwork)
 library(readxl)
@@ -40,13 +40,12 @@ library(DESeq2)
 library(MASS)
 library(glmnet)
 library(doParallel)    
-library(MUVR) 
 library(pheatmap)
-library(caret)
 library(data.table)
 library(plotly)
-library(mixOmics)
-library(DiscriMiner)
+library(pls)
+library(pracma)
+
 ```
 
 
@@ -514,6 +513,9 @@ pathway <- ref[which(ref$Baits == "POI"),1]
 
 
 ASCA_cands2 <- get_ASCA_cands2(a_c.PCD)
+
+ac_top <- ASCA_cands2[1:(nrow(ASCA_cands2)/2),]
+
 ASCA_cands2 <- ASCA_cands2[which(ASCA_cands2[,2] < 0),]
 ASCA_cands2 <- ASCA_cands2[order(ASCA_cands2[,2]),]
 ASCA_cands2 <- ASCA_cands2[-which(rownames(ASCA_cands2) %in% pathway),]
@@ -597,4 +599,162 @@ dev.off()
 
 
 ```
+
+```{r}
+
+spikes <- sls[-which(sls %in% baits)]
+resids <- res_ASCAplus_nb$residuals[,rownames(ac_top)]
+
+spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                          resids[,which(colnames(resids) %in% baits)], ncomp = 2)
+
+  #####
+  y <- colMeans(spls_res$Yloadings)
+  U <- spls_res$projection
+  UTP <- (dot(t(U),y)/dot(y,y))
+
+  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
+
+
+
+```
+
+
+
+
+
+```{r}
+library(riceidconverter)
+
+X <- X[,which(colnames(X) %in% colnames(resids))]
+
+symbol <- RiceIDConvert(unique(colnames(X)),'TRANSCRIPTID',toType = 'SYMBOL')
+symbol$SYMBOL <- gsub("LOC","osa:",symbol$SYMBOL)
+symbol <- symbol[grep("^osa",symbol$SYMBOL),]
+# KOIDs <- read.table("https://rest.kegg.jp/link/osa/ko")
+path <- read.table("https://rest.kegg.jp/link/osa/pathway")
+# module <- read.table("https://rest.kegg.jp/link/osa/module")
+
+
+colnames(path) <- c("PATH","SYMBOL")
+merged <- merge(symbol, path, by = "SYMBOL")
+
+
+pnum <- as.data.frame(table(merged$PATH))
+pnum <- pnum[-which(pnum$Freq < 4),]
+
+merged <- merged[which(merged$PATH %in% pnum$Var1),]
+
+
+
+
+
+if (!requireNamespace("KEGGREST", quietly = TRUE)) {
+  install.packages("BiocManager")
+  BiocManager::install("KEGGREST")
+}
+
+library(KEGGREST)
+
+
+kegg_ids <- unique(gsub("path:","",merged$PATH))
+
+# - STUPID FUNCTION BELOW -  ??
+
+# Function to get pathway description for each ID
+get_kegg_description <- function(kegg_id) {
+  pathway_info <- keggGet(kegg_id)  # Query KEGG
+  if (!is.null(pathway_info[[1]])) {
+    return(pathway_info[[1]]$NAME)  # Extract the name/description
+  } else {
+    return(NA)  # Return NA if the ID is invalid
+  }
+}
+
+# Apply the function to all KEGG IDs
+kegg_descriptions <- sapply(kegg_ids, get_kegg_description)
+
+# Combine IDs and descriptions into a data frame
+kegg_mapping <- data.frame(
+  KEGG_ID = kegg_ids,
+  Description = kegg_descriptions,
+  stringsAsFactors = FALSE
+)
+
+# Print the mapping
+print(kegg_mapping)
+
+
+kegg_DESC <- t(do.call(cbind,kegg_descriptions))
+
+
+
+
+
+
+X <- X[,which(colnames(X) %in% merged$TRANSCRIPTID)]       #from ~25k to 4k IDs
+
+
+cands <- sPLS_bait_cands[which(rownames(sPLS_bait_cands) %in% colnames(X)),, drop = FALSE]
+cands <- cbind(rownames(cands), cands)
+colnames(cands) <- c("TRANSCRIPTID","UTP")
+
+cands <- merge(cands,merged, by = "TRANSCRIPTID")
+
+cands <- cands[order(cands$UTP, decreasing = TRUE),]
+
+kegg_DESC[gsub("path:","",as.data.frame(table(cands$PATH[c(nrow(cands):(nrow(cands) - 50))]))[,1]),]
+
+kegg_DESC[gsub("path:","",as.data.frame(table(cands$PATH[1:50]))[,1]),]
+
+
+resids <- resids[,which(colnames(resids) %in% colnames(X))]
+
+res_cor <- cor(resids)
+```
+```{r}
+
+
+diag(res_cor) <- NA
+
+threshold <- quantile(res_cor, 0.999, na.rm = TRUE)
+
+inds <- which(res_cor > threshold, arr.ind = TRUE)
+
+cor_vals <- res_cor[inds]
+
+results <- data.frame(
+  Row = inds[, 1],
+  Column = inds[, 2],
+  Correlation = cor_vals
+)
+
+if (!is.null(rownames(res_cor))) {
+  results$Variable1 <- rownames(res_cor)[results$Row]
+  results$Variable2 <- colnames(res_cor)[results$Column]
+}
+
+results <- results[results$Row < results$Column, ]
+results <- results[order(-results$Correlation), ]
+
+length(unique(c(results$Variable1, results$Variable2)))
+
+res1 <- merge(results,merged, by.x = "Variable1", by.y = "TRANSCRIPTID")
+res1 <- merge(res1,merged, by.x = "Variable2", by.y = "TRANSCRIPTID")
+res1 <- res1[which(res1$`PATH.x` == res1$`PATH.y`),]
+
+
+cands <- cands[order(cands$UTP, decreasing = TRUE),]
+
+kegg_DESC[gsub("path:","",as.data.frame(table(res1$`PATH.x`))[,1]),]
+
+same_path <- as.data.frame(table(res1$`PATH.x`))
+same_path <- same_path[which(same_path[,2] > 5 & same_path[,2] < 50),]
+
+kegg_DESC[gsub("path:","",same_path[,1]),]
+
+saveRDS(same_path, "path_example.RDS")
+
+```
+
 

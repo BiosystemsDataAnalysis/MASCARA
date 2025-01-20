@@ -27,8 +27,11 @@ library(WGCNA)
 
 
 # source("../DATA_SIM_FUNCS.R")
+# setwd("C:/Users/fwhite/Documents/GitHub/MASCARA/R")
 
-source("DATA_SIM_FUNCS_DEV.R")
+setwd("/zfs/omics/personal/fwhite/MASCARA/R")
+
+source("DATA_SIM_FUNCS.R")
 
 
 Create_Core_DEV <- Create_Core_DEV_2
@@ -89,7 +92,10 @@ WGCNA4_test <- function(data, baits, spikes){
   TOM <- TOMsimilarity(adjacency)
   TOM.dissimilarity <- 1-TOM
   geneTree <- hclust(as.dist(TOM.dissimilarity), method = "average")
-  Modules <- cutreeDynamic(dendro = geneTree, distM = TOM.dissimilarity, deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = 12)
+  browser()
+  Modules <- cutreeDynamic(dendro = geneTree, distM = TOM.dissimilarity, deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = 4)
+  
+  # if(length(Modules > 15))
   ModuleColors <- labels2colors(Modules)
   MElist <- moduleEigengenes(data, colors = ModuleColors)
   MEs <- MElist$eigengenes
@@ -118,126 +124,78 @@ WGCNA4_test <- function(data, baits, spikes){
 }
 
 
-baits <- paste0("X_",c(1985:1988))   #501:510
-spikes <- paste0("X_",c(1989:2000))
 
+# # spikes <- paste0("X_",c(1977:1988))
+# baits <- paste0("X_",c(1985:1988))   #501:510
+# spikes <- paste0("X_",c(1989:2000))
+# 
 
-Baits <- c(baits,spikes)
-
-
-nreps <- 3
-meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = nreps))
-colnames(meta) <- c("growth_condition","time")
-meta$ID <- paste(meta$growth_condition, meta$time, sep = "_")
-
+meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
+colnames(meta) <- c("growth_condition","time","interaction")
 
 
 sim_data <- Create_Core_DEV(nreps = 3, meta = meta, plot = F, 
                             EffectSize = c(X_a_ab = 1, time = 1, E = 0.5, mu = 1, Struc_E = 1.5), 
                             struc_resid = T, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1.5,0.7,0.6,0.1),
-                            b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 1027)
+                            b_sigma = c(1,0), irr_spikes = TRUE, SCORE_SEED = 1027)
+
+
+###################
+source("DATA_SIM_FUNCS.R")
 
 
 
-
-
-
-
-nreps <- 15
-
-X_30 <- list()
-
-big_meta <- cbind.data.frame(rep(c(1,-1), each = betaN*nreps), rep(c(1:betaN), each = nreps))
-
-colnames(big_meta) <- c("growth_condition","time")
-big_meta$ID <- paste(big_meta$growth_condition, big_meta$time, sep = "_")
-
-
-big_meta$cond <- paste0(big_meta[,1],"_",big_meta[,2])
-conds <- unique(big_meta$cond)
-big_meta$reps <- paste0(big_meta$cond,"_",c(1:nreps))
-
-
-#sample the X_30 dataset here with reps from x
-X_funced <- list()
-meta <- list()
-
-norms <- list()
-
-l <- 1
-
-
-y <- rep(c(0.0004,0.002, 0.01),3)
-x <- rep(30,9)  #100
-nse <- rep(c(0.1,0.3,0.5), each = 3)
-
+# baits 
+# spikes
 
 
 # y <- rep(c(0.008333333, 0.016666667, 0.025000000),3)
 # x <- rep(30,9)  #100
 # nse <- rep(c(0.2,0.4,0.6), each = 3)
+# 
+# 
+# 
+# 
+# y <- rep((c(0:10)/50))
+# x <-  c(0:10) * 10     #5
+# 
+# 
+# x <- rep(x,each = length(y))
+# y <- rep(y, length(unique(x)))
+# 
+# 
+# z <- x*y
+# 
+# 
+# main_lev  <-  z
 
 
+bx <- c(2:15)
+sx <-c(2:50)
 
 
-main_lev <- x*y
-ERs <- x
+POI <- expand_grid(bx,sx)
 
-#######
 
-idlist <- list()
+# E_lev <- c(0:10)/20
+# ERs <- x
 
-a <- NULL
-
-# set.seed(40001)
-
-for(a in 1:length(ERs)){
+X_funced <- list()
+names <- c()
+i <- NULL
+l <- 1
+for(i in 1:nrow(POI)){
   
-  i <- NULL
   
-  for(i in 1:20){
-    
-    
-    X_30[[i]] <- Create_Core_DEV(nreps = nreps, meta = big_meta, plot = FALSE, 
-                    EffectSize = c(X_a_ab = main_lev[a], time = 0.2, E = nse[a], mu = 0.2, Struc_E = 0.05), 
-                    struc_resid = T, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1.5,0.7,0.6,0.1),
-                    b_sigma = c(1,0), irr_spikes = FALSE, SCORE_SEED = (250021 + i), Experiment_responders = ERs[a], ts = 3 + i) 
-    
-    
-    
-    
-    k <- NULL
-    for(k in 3:nreps){
-      
-      IDS <- NULL
-      
-      j <- NULL
-      for(j in 1:length(conds)){
-        
-        set.seed(40001 + l*2)
-        ids <- sample(big_meta$reps[which(big_meta$cond == conds[j])], k)
-        IDS <- c(IDS,ids)
-        
-        idlist[[l]] <- IDS
-        
-        
-        
-      }
-      
-      X_funced[[l]] <- X_30[[i]][[1]][which(big_meta$reps %in% IDS),]
-      meta[[l]] <- big_meta[which(big_meta$reps %in% IDS),]
-      
-      norms[[l]] <- X_30[[i]][[6]]
-      
-      l <- l + 1
-      
-      
-      
-    }
-    
-    
-    
-  }
+  X_funced[[l]] <- Create_Core_DEV_3(nreps = 3, meta = meta,
+                                   EffectSize = c(X_a_ab = 0.5, time = 1, E = 0.4, mu = 1, Struc_E = 0.05), 
+                                   struc_resid = T, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1.5,0.7,0.6,0.1),
+                                   b_sigma = c(1,0), irr_spikes = FALSE, SCORE_SEED = 1000,  #_8 = 1027
+                                   plot = FALSE, Experiment_responders = 1000, ts = 1234, baits = c(as.matrix(POI[l,1])), spikes = c(as.matrix(POI[l,2])))
+  
+  names[l] <- paste(baits = POI[l,1], spikes = POI[l,2], sep = "_")
+  l <- l + 1
+  
   
   
   
@@ -247,16 +205,19 @@ for(a in 1:length(ERs)){
 
 
 
-
-Ranked_Coexp_HIGH <- Ranked_Coexp_HIGH.d <- function(X, baits, spikes, ncands){
+Ranked_Coexp_HIGH <- function(X, baits, spikes, ncands){
+  # baits_small <- baits[c(9:12)]
   
   ranked <- ranked_coexp(baits, X)
+  
+  # F1_scores <- F1_plot(ranked, spikes, ncands, TITLE = ": Ranked Correlation")
+  
   RP <- prod(which(rownames(ranked) %in% spikes))^(1/length(spikes))
+  
   
   return(list(RP, ranked))
   
 }
-
 
 
 
@@ -274,18 +235,16 @@ WGCNA_RES <- data.frame(matrix(nrow = ncands, ncol = length(X_funced)))
 
 
 
-ASCA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]]) - 4, ncol = length(X_funced)))
+ASCA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 2, ncol = length(X_funced)))
 
-PLS_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]]) - 4, ncol = length(X_funced)))
+PLS_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 2, ncol = length(X_funced)))
 
-COEXP_HIGH_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]]) - 4, ncol = length(X_funced)))
+COEXP_HIGH_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 2, ncol = length(X_funced)))
 
-MASCARA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]]) - 4, ncol = length(X_funced)))
+MASCARA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 2, ncol = length(X_funced)))
 
-WGCNA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]]) - 4, ncol = length(X_funced)))
+WGCNA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 2, ncol = length(X_funced)))
 
-
-Baits <- c(baits,spikes)
 
 
 EI <- c()
@@ -294,29 +253,42 @@ while(i < length(X_funced) + 1){
   
   tryCatch({
     
-    ar <- ASCA(X_funced[[i]], m = meta[[i]], Baits = baits, spikes = spikes, ncands = ncands, distance_calc = F, Return_Model = F)   ##need to save all metas?...
+    
+    p1 <- sum(POI[i,])
+    
+    b1 <- c(data.matrix(POI[i,1]))
+    s1 <- c(data.matrix(POI[i,2]))
+    
+    baits <- paste0("X_",c((ncol(X_funced[[i]][[1]])-p1+1): (ncol(X_funced[[i]][[1]])-p1+b1) ))
+    
+    spikes <- paste0("X_",c((ncol(X_funced[[i]][[1]])-s1+1): (ncol(X_funced[[i]][[1]] )) ))
+    
+
+                                    
+    ar <- ASCA(X_funced[[i]][[1]], m = meta, Baits = baits, spikes = spikes, ncands = ncands, distance_calc = F, Return_Model = F)   ##need to save all metas?...
+    
+    ind <- nrow(ASCA_CANDS)
+
     ASCA_RES[,i] <- ar[[1]]
-    ASCA_CANDS[,i] <- rownames(ar[[2]])
+    ASCA_CANDS[,i] <- c(rownames(ar[[2]]),rep(0,(ind - length(rownames(ar[[2]])))))
     
     
-    hcr <- Ranked_Coexp_HIGH(X_funced[[i]], baits, spikes, ncands)
+    hcr <- Ranked_Coexp_HIGH(X_funced[[i]][[1]], baits, spikes, ncands)
     COEXP_HIGH_RES[,i] <- hcr[[1]]
-    COEXP_HIGH_CANDS[,i] <- rownames(hcr[[2]])
+    COEXP_HIGH_CANDS[,i] <- c(rownames(hcr[[2]]),rep(0,(ind - length(rownames(hcr[[2]])))))
     
-    hcr <- sPLSr(X_funced[[i]], meta[[i]], baits, spikes, ncands)  
+    hcr <- sPLSr(X_funced[[i]][[1]], meta, baits, spikes, ncands)  
     PLS_RES[,i] <- hcr[[1]]
-    PLS_CANDS[,i] <- rownames(hcr[[2]])
-    
-    
+    PLS_CANDS[,i] <- c(rownames(hcr[[2]]),rep(0,(ind - length(rownames(hcr[[2]])))))
     
     MASCARAh <- MASCARA4_test(ar[[3]], baits, spikes = spikes)
     MASCARA_RES[,i] <- MASCARAh[[1]]
-    MASCARA_CANDS[,i] <- rownames(MASCARAh[[2]])
+    MASCARA_CANDS[,i] <- c(rownames(MASCARAh[[2]]),rep(0,(ind - length(rownames(MASCARAh[[2]])))))
     
-    WGCNAh <- WGCNA4_test(X_funced[[i]], baits, spikes = spikes)
-    WGCNA_RES[,i] <- WGCNAh[[1]]
-    WGCNA_CANDS[,i] <- rownames(WGCNAh[[2]])
-    
+    # WGCNAh <- WGCNA4_test(X_funced[[i]][[1]], baits, spikes = spikes)
+    # WGCNA_RES[,i] <- WGCNAh[[1]]
+    # WGCNA_CANDS[,i] <- rownames(WGCNAh[[2]])
+    # 
     
     
     i <- i + 1
@@ -339,13 +311,14 @@ while(i < length(X_funced) + 1){
 
 Noise_sim <- list(ASCA_RES, PLS_RES, COEXP_HIGH_RES, MASCARA_RES, WGCNA_RES)
 
-###################################################
+
+# saveRDS(Noise_sim, "Noise_Sim_Coexp_24_01_22.RDS")
+
+saveRDS(Noise_sim, "Noise_Sim_b_s_24_12_04.RDS")   #Noise_Sim_Coexp_24_05_24.RDS
 
 
 
-# saveRDS(Noise_sim, "~/personal/23_03_08_Tests/Noise_Sim_24_01_22_Replicate_Tests.RDS")  #Noise_Sim_23_06_27_Replicate_Tests.RDS
 
-saveRDS(Noise_sim, "~/personal/23_03_08_Tests/Noise_Sim_24_12_04_Replicate_Tests.RDS")  #Noise_Sim_23_06_27_Replicate_Tests.RDS
-#Noise_Sim_24_05_24_Replicate_Tests.RDS
-###################################################
 
+
+#divide by RP by  (prod(c(1:r))^(1/r))/r  #r is number of spikes (true positives)

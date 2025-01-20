@@ -1,0 +1,324 @@
+---
+title: "Caldana_metabolomics_application"
+author: "Fred White"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+# library(readxl)
+library(openxlsx)
+library(ggplot2)
+library(patchwork)
+library(gASCA)
+library(pls)
+library(pracma)
+library(pheatmap)
+
+
+
+source("DATA_SIM_FUNCS.R")
+source("MASCARA_FUNCS.R")
+```
+
+
+```{r}
+data <- as.data.frame(read.xlsx("Data_Caldana/Caldana-et-al_Normalized-metabolic-data.xlsx"))
+
+```
+
+```{r}
+# meta <- cbind.data.frame(colnames(data), t(data[1:2,]))
+# meta <- meta[-1,]
+
+# meta$Temperature <- gsub("-.*","",meta$Temperature)
+# 
+# meta$Light <- gsub(".*-","",meta$Light)
+
+meta <- read.table("Caldana_meta.csv", sep = ",", header = T)
+meta$ID <- paste(meta$Temperature, meta$Light, meta$Time, meta$Replicate, sep = "_")
+```
+
+```{r, warning=FALSE}
+data <- data[-c(1,2),]
+Metabolites <- data[,1]
+data <- (apply(data[,-c(1)],2, as.numeric))
+rownames(data) <- Metabolites
+
+colnames(data) <- meta$ID
+
+data[which(is.na(data), arr.ind = T)] <- 0
+```
+
+```{r}
+#filtering?
+
+
+
+```
+
+
+```{r}
+data <- log2(data + 1)
+
+# data <- data[-grep("Similar.to.Adenine..2TMS",rownames(data)),]
+# Metabolites <- Metabolites[-grep("Similar.to.Adenine..2TMS",Metabolites)]
+# data <- data[-grep("Similar.to.Adenine..2TMS",rownames(data)),]
+# Metabolites <- Metabolites[-grep("Similar.to.Adenine..2TMS",Metabolites)]
+```
+
+```{r}
+PCA <- prcomp(t(data))#, scale = F, center = F)
+
+A <- PCA$x
+B <- PCA$rotation
+
+
+df <- cbind.data.frame(meta[,c("Temperature","Light","Time")], A)
+
+df$Light <- factor(df$Light, levels = c("D","LL","L","HL"))
+# colnames(df)[-which(colnames(df) %in% colnames(meta))] <- paste0("PC",colnames(df)[-which(colnames(df) %in% colnames(meta))])
+
+# pdf(paste0(Sys.Date(),"_feature_loadings_project_full2.pdf"))
+scores <- ggplot(df, aes(x = PC1,y = PC2, colour = Temperature, shape = (Light), size = Time)) +
+  geom_point(alpha = 0.5) +
+  ggtitle("Scores") +
+  theme_bw()
+
+
+#CHANGE
+
+df <- cbind.data.frame(Metabolites,B)
+
+# do.call(c,lapply(Data,colnames))
+
+
+
+# pdf(paste0(Sys.Date(),"_feature_loadings_project_full2.pdf"))
+loadings <- ggplot(df, aes(x = PC1,y = PC2, alpha = 0.5)) +
+  geom_point(alpha = 0.5) + 
+  scale_color_manual(values = colours) +
+  ggtitle("Loadings") +
+  theme_bw()
+
+
+
+
+scores + loadings  + plot_annotation(title = "PCA")
+
+
+
+```
+
+```{r}
+# #PERMANOVA
+# options(knitr.kable.NA = '')
+# library(vegan)
+# #calculate euclidean distance between samples
+# #this matrix should be of the dimensions: number of samples * number of samples
+# 
+# dist_matrix <- dist(t(data))
+# 
+# 
+# 
+# permanova_re <- adonis2(dist_matrix ~ Temperature * Light * Time, 
+#                             meta[,c("Temperature","Light","Time")], permutations = 999, method = "euclidean", 
+#                             sqrt.dist = FALSE, add = FALSE, by = "terms", 
+#                             parallel = 4)
+# 
+# 
+# 
+# kable(permanova_re)
+# 
+
+```
+
+
+We calculate an ASCA model on the data to partition the experimental and residual variance:
+
+```{r}
+ar <- ASCA_decompose(d = apply(meta[,-c(4,5)],2,as.factor), x = t(data), f = "Temperature * Light * Time")
+
+
+#unexpectedly different from PERMANOVA R2
+norm(ar$residuals, type = "F")
+
+norm(ar$decomposition$Temperature, type = "F")
+
+resids <- ar$residuals
+```
+
+
+```{r}
+#select some baits (based on PESCA model ?..)
+
+# cors <- 
+
+p1 <- pheatmap(cov(resids), show_colnames = F, fontsize_row = 8)
+```
+
+```{r}
+
+p2 <- pheatmap(cov(t(data[p1$tree_row$order,])), show_colnames = F, fontsize_row = 8, cluster_rows = F, cluster_cols = F)
+
+# p2 <- pheatmap(cor(t(data[])), show_colnames = F, fontsize_row = 8)
+
+
+```
+
+
+
+
+Observe the clustering of certain amino acids with high residual correlations, for example Lysine, Tyrosine, Leucine and Isoleucine.
+
+```{r}
+baits <- c("Lysine","Tyrosine","Leucine")
+
+
+```
+
+
+
+```{r}
+Y_hat <-  t(data) - resids 
+
+
+# time plays a larger role in caldana data -
+# Y_hat_nt <-  t(data) - resids - ar$decomposition$Time
+
+
+Y_hat_r <- cov(t(data))
+
+E_r <- cov(resids)
+
+# plot(Y_hat_r[upper.tri(Y_hat_r)], E_r[upper.tri(E_r)], xlab = "Between Correlations", ylab = "Within Correlations")
+# 
+# plot(Y_hat_r[], E_r[], xlab = "Between Correlations", ylab = "Within Correlations")
+
+
+#alpha by norm(resid)/norm(data-resid)
+
+#shape by quantiles below
+
+ratio <- resids^2/Y_hat^2
+
+#make this signless ?
+ratio2 <- abs(E_r)/abs(Y_hat_r)
+
+```
+
+```{r}
+library(reshape2)
+
+
+df <- cbind.data.frame(melt(Y_hat_r), melt(E_r)[,3])
+
+
+colnames(df)[c(3:4)] <- c("Total","Within")
+
+df$Ratio <- abs(df$Within)/abs(df$Total)
+
+df$Ratio2 <- abs(df$Total)/abs(df$Within)
+
+
+df <- df[-which(df$Var1 == df$Var2),]
+
+
+#subset higher within examples
+df$Covariance <- df$Within
+
+#subset higher Total examples
+df$Covariance[which(abs(df$Total) > quantile(abs(df$Total),0.99))] <- "Total"
+
+df$Covariance[which(abs(df$Within) > quantile(abs(df$Within),0.99))] <- "Within"
+
+
+df$Covariance[-which(df$Covariance %in% c("Within","Total"))] <- "none"
+
+```
+
+
+```{r}
+ggplot(df, aes(x = Total, y = Within)) +
+  geom_point(aes(alpha = 0.1)) +
+  geom_point(data = df[which(df$Covariance %in% c("Within","Total")),],
+aes(alpha = 1, size = 1.2, colour = Covariance)) +
+  scale_color_manual(values = c("lightgreen","purple")) + 
+     # geom_abline(intercept = 0,slope = 1)
+  guides(alpha = "none", size = "none") +
+  theme_bw()
+
+
+
+
+
+```
+
+```{r}
+head(df[order(abs(df$Within), decreasing = T),],20)
+head(df[order(abs(df$Total), decreasing = T),],20)
+df[which(df$Covariance == "Total"),]
+
+```
+
+
+```{r}
+which(ratio2 > quantile(ratio2,0.999),arr.ind = T)
+which(ratio2 < quantile(ratio2,0.001),arr.ind = T)
+
+#check sign or signless ratio
+
+#make above plot but make the high ratio standout
+```
+
+
+
+```{r}
+#MASCARA PLOTS
+
+
+```
+
+
+Before continuing it is a good idea to check that the set of baits are indeed correlated in the residual variance:
+
+```{r}
+cor(resids[,which(colnames(resids) %in% baits)])
+```
+In this case they are, in the case of real data we expect these values to be somewhat lower (values ~ 0.5 are reason enough to continue).
+
+Another sanity check at this stage is to look at the baits residual variance against each other:
+
+```{r}
+
+plot(resids[,baits[1]], resids[,baits[2]])
+
+```
+
+We can see above that there is a relationship between the examples.
+
+From here we take the residuals and calculate a PLS2 model with a predefined set of baits using the SIMPLS algorithm:
+
+```{r}
+
+spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                          resids[,which(colnames(resids) %in% baits)], ncomp = 2)
+  
+```
+
+
+Selecting features with $\mathbf{\bar{q}}$ target projection:
+
+```{r}
+q_bar <- colMeans(spls_res$Yloadings)
+R <- spls_res$projection
+R_TP <- (dot(t(R),q_bar)/dot(q_bar,q_bar))
+  
+Candidates <- as.data.frame(R_TP[order(R_TP, decreasing = TRUE)])
+```
+
+Now we have our ordered candidate list, top of the list represents features that have the strongest positive association with the baits.
+
+
+
+

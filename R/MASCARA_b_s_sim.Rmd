@@ -1,0 +1,116 @@
+---
+title: "sim_b_s"
+author: "Fred White"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r , echo=FALSE, include=FALSE}
+source("DATA_SIM_FUNCS.R")
+source("MASCARA_FUNCS.R")
+```
+
+
+
+
+```{r, echo = FALSE, include=FALSE}
+library(devtools)
+library(ggplot2)
+# library(MetStaT)
+library(gASCA)
+library(patchwork)
+library(readxl)
+library(ggfortify)
+library(ggrepel)
+library(grid)
+library(gridExtra)
+library(tidyr)
+library(tidyverse)
+library(reshape2)
+library(scales)
+library(matrixStats)
+library(DESeq2)
+library(MASS)
+library(glmnet)
+library(doParallel)
+# library(MUVR)
+library(pheatmap)
+# library(caret)
+# library(mixOmics)
+library(cowplot)
+library(reticulate)
+library(biomformat)
+# library(DiscriMiner)
+library(viridis)
+library(directlabels)
+library(ggpmisc)
+library(DescTools)
+library(data.table)
+library(plotly)
+# library(ggbreak)
+# library(rhmmer)
+library(pracma)
+library(pls)
+```
+
+```{r,echo = F}
+
+# Noise_Tests <- readRDS("Noise_Sim_Coexp_24_01_22.RDS")
+# getwd()
+Noise_Tests <- readRDS("Noise_Sim_b_s_24_12_04.RDS")    #Noise_Sim_Coexp_24_05_24.RDS
+# Noise_Tests <- Noise_Tests[1:4]
+names(Noise_Tests) <- c("ASCA", "PLS", "Correlations", "MASCARA")
+
+Noise_Tests <- Noise_Tests[c("ASCA", "PLS", "Correlations", "MASCARA")]
+Noise_Tests <- lapply(Noise_Tests, narm, keep_col1 = T)
+
+
+
+bx <- c(2:15)
+sx <-c(2:50)
+
+
+POI <- expand_grid(bx,sx)
+
+
+s_B_res <- data.matrix(do.call(rbind,lapply(Noise_Tests, function(x) x[1,])))
+
+
+
+
+s_B_res <- cbind.data.frame(POI, t(s_B_res))
+s_B_res <- melt(s_B_res, id.vars = c("bx","sx"))
+colnames(s_B_res)[3:4] <- c("Method","GMR")
+
+
+
+  i <- NULL
+for(i in 1:nrow(s_B_res)){
+  
+  s_B_res$GMR[i] <- s_B_res$GMR[i]/ (prod(c(1:s_B_res$sx[i]))^(1/s_B_res$sx[i]))
+  
+}
+
+s_B_res$GMR <- log2(s_B_res$GMR)
+max_value <- max(s_B_res$GMR)
+min_value <- min(s_B_res$GMR)
+
+library(viridis)
+
+ggplot(s_B_res, aes(x = bx, y = sx)) +
+  geom_tile(aes(fill = GMR)) +
+  # scale_fill_gradient(low = "blue", high = "yellow", limits = c(min_value,max_value))+
+  scale_fill_viridis_c(limits = c(min_value, max_value)) +
+  facet_wrap(~ Method) +
+  labs(title = "Num baits & spikes",
+       x = "Baits",
+       y = "Spikes",
+       color = "GMR")
+
+
+```

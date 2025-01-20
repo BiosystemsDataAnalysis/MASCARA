@@ -24,6 +24,7 @@ library(caret)
 library(mixOmics)
 library(pracma)
 library(pls)
+library(WGCNA)
 
 # source("../DATA_SIM_FUNCS.R")
 
@@ -57,6 +58,41 @@ splsR <- function(resids, baits, spikes){
   return(list(RP, sPLS_cands))
 }
 
+WGCNA4_test <- function(data, baits, spikes){
+  
+  softPower <- 6
+  adjacency <- adjacency(data, power = softPower)
+  
+  TOM <- TOMsimilarity(adjacency)
+  TOM.dissimilarity <- 1-TOM
+  geneTree <- hclust(as.dist(TOM.dissimilarity), method = "average")
+  Modules <- cutreeDynamic(dendro = geneTree, distM = TOM.dissimilarity, deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = 12)
+  ModuleColors <- labels2colors(Modules)
+  MElist <- moduleEigengenes(data, colors = ModuleColors)
+  MEs <- MElist$eigengenes
+  ME.dissimilarity = 1-cor(MElist$eigengenes, use="complete")
+  
+  merge <- mergeCloseModules(data, ModuleColors, cutHeight = .25)
+  # mergedColors = merge$colors
+  
+  mergedMEs = merge$newMEs
+  
+  
+  sKME <- signedKME(data, mergedMEs)
+  
+  #feature selection
+  q_bar <- colMeans(sKME[baits,])
+  R <- sKME[!rownames(sKME) %in% baits,]
+  R_TP <- (dot(t(R),q_bar)/dot(q_bar,q_bar))
+  
+  Candidates <- as.data.frame(R_TP[order(R_TP, decreasing = TRUE)])
+  
+  RP <- prod(which(rownames(Candidates) %in% spikes))^(1/length(spikes))
+  
+  return(list(RP, Candidates, mergedMEs, sKME))
+  
+  
+}
 
 
 
@@ -162,6 +198,9 @@ PLS_RES <- data.frame(matrix(nrow = ncands, ncol = length(X_funced)))
 
 MASCARA_RES  <- data.frame(matrix(nrow = ncands, ncol = length(X_funced)))
 
+WGCNA_RES <- data.frame(matrix(nrow = ncands, ncol = length(X_funced)))
+
+
 
 
 ASCA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 4, ncol = length(X_funced)))
@@ -171,6 +210,9 @@ PLS_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 4, ncol = lengt
 COEXP_HIGH_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 4, ncol = length(X_funced)))
 
 MASCARA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 4, ncol = length(X_funced)))
+
+WGCNA_CANDS <- data.frame(matrix(nrow = ncol(X_funced[[1]][[1]]) - 4, ncol = length(X_funced)))
+
 
 Baits <- c(baits,spikes)
 
@@ -197,7 +239,10 @@ while(i < length(X_funced) + 1){
     MASCARA_RES[,i] <- MASCARAh[[1]]
     MASCARA_CANDS[,i] <- rownames(MASCARAh[[2]])
     
-
+    WGCNAh <- WGCNA4_test(X_funced[[i]][[1]], baits, spikes = spikes)
+    WGCNA_RES[,i] <- WGCNAh[[1]]
+    WGCNA_CANDS[,i] <- rownames(WGCNAh[[2]])
+    
 
     
     i <- i + 1
@@ -216,20 +261,12 @@ while(i < length(X_funced) + 1){
 }
 
 
-# ns <- list(ASCA_DIST_LOW, ASCA_DIST_HIGH, PCA_DIST_LOW, PCA_DIST_HIGH)
-# saveRDS(ns, "Noise_Sim_220926_2_redo_dist.RDS")
 
 
-
-Noise_sim <- list(ASCA_RES, PLS_RES, COEXP_HIGH_RES, MASCARA_RES)
-
-## # saveRDS(Noise_sim, "Noise_Sim_220926.RDS")
-
-## saveRDS(Noise_sim, "Noise_Sim_Coexp_23_06_28.RDS")
-
-# saveRDS(Noise_sim, "Noise_Sim_Coexp_23_07_26_11.RDS")
+Noise_sim <- list(ASCA_RES, PLS_RES, COEXP_HIGH_RES, MASCARA_RES, WGCNA_RES)
 
 
-saveRDS(Noise_sim, "Noise_Sim_Coexp_24_01_22.RDS")
+# saveRDS(Noise_sim, "Noise_Sim_Coexp_24_01_22.RDS")
 
+saveRDS(Noise_sim, "Noise_Sim_Coexp_24_06_13.RDS")   #Noise_Sim_Coexp_24_05_24.RDS
 

@@ -61,10 +61,10 @@ Experiment_responders <- 30
 ```{r}
 
 sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, 
-                        EffectSize = c(X_a_ab = 5, time = 1, E = 10, mu = 1, Struc_E = 1),    # E = 1, Struc_E = 0.4
+                        EffectSize = c(X_a_ab = 5, time = 1, E = 5, mu = 1, Struc_E = 0.9),    # E = 1, Struc_E = 0.4
                         struc_resid = TRUE, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1,0.7,0.6,0.1),
                         b_sigma = c(1,0.9), irr_spikes = TRUE, SCORE_SEED = 12, Experiment_responders = Experiment_responders,
-                        struc_seed = 127, score_plot = FALSE, plot = FALSE)  
+                        struc_seed = 1230, score_plot = FALSE, plot = FALSE)  
 
 ```
 
@@ -389,9 +389,15 @@ scores <- cbind.data.frame(scores,meta[,1:2])
 
 a <- ggplot(scores_r_baits, aes(x = Comp_1, y = Comp_2)) +
   geom_point(aes(colour = growth_condition, shape = time, size = 20)) +
-  ggtitle("Scores") + 
-  theme_bw()
+    scale_shape_manual(values=c(18,19,20,21))+  #3, 16, 17
 
+  guides(size = FALSE) +
+  ggtitle("Residual Scores") + 
+  theme_bw()
+```
+
+
+```{r}
 colnames(yloadings) <- colnames(loadings_r_baits)
 
 loadings_r_baits <- rbind(loadings_r_baits, yloadings)
@@ -400,10 +406,12 @@ loadings_r_baits <- cbind.data.frame("ID" = rownames(loadings_r_baits), loadings
 
 
 ```{r}
-loadings_r_baits$ID[-which(loadings_r_baits$ID %in% c(baits,spikes))] <- "Other"
-
-loadings_r_baits$ID[which(loadings_r_baits$ID %in% spikes)] <- "Spikes"
+loadings_r_baits$ID[-which(loadings_r_baits$ID %in% c(baits,spikes))] <- "Unrelated"
+set.seed(213)
+loadings_r_baits$ID[which(loadings_r_baits$ID %in% spikes)] <- sample(c("Pathway","Related"),length(which(loadings_r_baits$ID %in% spikes)),replace = T)
 loadings_r_baits$ID[which(loadings_r_baits$ID %in% baits)] <- "Baits"
+
+# sample(loadings_r_baits$ID[which(loadings_r_baits$ID == "Pathway")],6) <- "Related"
 ```
 
 ```{r}
@@ -411,14 +419,16 @@ b <- ggplot(loadings_r_baits, aes(x = Comp_1, y = Comp_2, colour = ID, shape = I
   geom_point() +
     ggtitle("Loadings") + 
 
-  geom_segment(x = 0, y = 0, xend = line[1], yend = line[2], lineend = "round", linewidth = 2, colour = "purple", arrow = arrow()) +    
-  scale_shape_manual(values=c(3, 16, 17))+
+  geom_segment(x = 0, y = 0, xend = line[1], yend = line[2], lineend = "round", linewidth = 2, colour = "steelblue", arrow = arrow()) +    
+  scale_shape_manual(values=c(17,16,16,15))+  #3, 16, 17
 
 
-    scale_color_manual(values=c('#E69F00',"black", '#56B4E9'))+
-      geom_point(data = loadings_r_baits[which(loadings_r_baits$ID %in% c("Baits","Spikes")),], aes(size = 15)) +
+    scale_color_manual(values=c('purple',  'purple',"orange","lightgreen"))+
+      geom_point(data = loadings_r_baits[which(loadings_r_baits$ID %in% c("Baits","Pathway","Related")),], aes(size = 15)) +
+    guides(size = FALSE) +
+
   theme_bw()
 
-b
+a + b
 ```
 

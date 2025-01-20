@@ -1,0 +1,223 @@
+---
+title: "WGCNA_test"
+author: "Fred White"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(WGCNA)
+library(matrixStats)
+library(gASCA)
+library(pracma)
+source("DATA_SIM_FUNCS.R")
+#getwd()
+```
+
+```{r}
+Create_Core_DEV <- Create_Core_DEV_2
+
+
+baits <- paste0("X_",c(1985:1988))   #501:510
+spikes <- paste0("X_",c(1989:2000))
+
+
+meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
+colnames(meta) <- c("growth_condition","time","interaction")
+
+```
+
+
+
+```{r}
+
+y <- rep(c(0.0004,0.002, 0.01),3)      
+
+x <- rep(30,9)  #100
+
+nse <- rep(c(0.1,0.3,0.5), each = 3)
+
+# y <- c(0.1, 2, 4)
+# x <- c(25,125,250) 
+
+
+main_lev <- x*y
+ERs <- x
+
+nreps <- 3
+
+a <- 6
+i <- 19
+    sim_data <- Create_Core_DEV(nreps = nreps, meta = meta, plot = FALSE, 
+                    EffectSize = c(X_a_ab = main_lev[a], time = 0.2, E = nse[a], mu = 0.2, Struc_E = 0.05), 
+                    struc_resid = T, e_sigma = c(1.5,0.8,0.0), a_sigma = c(1.5,0.7,0.6,0.1),
+                    b_sigma = c(1,0), irr_spikes = FALSE, SCORE_SEED = (250021 + i), Experiment_responders = ERs[a], ts = 3 + i) 
+    
+
+
+```
+
+
+```{r}
+data <- sim_data[[1]]
+
+```
+
+
+#variance partitioning
+
+```{r}
+ar <- ASCA_decompose(d = apply(meta[,c(1,2)],2,as.factor), x = data, f = "growth_condition * time")
+
+
+#unexpectedly different from PERMANOVA R2
+norm(ar$residuals, type = "F")
+
+# norm(ar$decomposition$Temperature, type = "F")
+
+resids <- ar$residuals
+
+# data <- resids
+```
+
+
+
+```{r}
+spt <- pickSoftThreshold(data, moreNetworkConcepts = TRUE) 
+# spt$powerEstimate
+```
+
+
+```{r}
+softPower <- 6
+adjacency <- adjacency(data, power = softPower)
+
+TOM <- TOMsimilarity(adjacency)
+```
+
+
+```{r}
+par(mfrow = c(1,2))
+plot(spt$fitIndices[,1], -sign(spt$fitIndices[,3])*spt$fitIndices[,2],
+      xlab="Soft Threshold (power)",ylab="Scale Free Topology Model Fit,signed R^2",type="n",
+      main = paste("Scale independence"));
+  text(spt$fitIndices[,1], -sign(spt$fitIndices[,3])*spt$fitIndices[,2],
+       labels=spt$fitIndices[,1],cex=0.9,col="red");
+  # this line corresponds to using an R^2 cut-off of h
+  abline(h=0.90,col="red")
+
+# Mean connectivity as a function of the soft-thresholding power
+plot(spt$fitIndices[,1], spt$fitIndices[,5],
+     xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",
+     main = paste("Mean connectivity"))
+text(spt$fitIndices[,1], spt$fitIndices[,5], labels=spt$fitIndices[,1], cex=0.9,col="red")
+
+```
+
+
+
+
+
+
+```{r}
+TOM.dissimilarity <- 1-TOM
+```
+
+```{r}
+geneTree <- hclust(as.dist(TOM.dissimilarity), method = "average")
+
+sizeGrWindow(12,9)
+plot(geneTree, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",
+labels = FALSE, hang = 0.04)
+```
+
+```{r}
+Modules <- cutreeDynamic(dendro = geneTree, distM = TOM.dissimilarity, deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = 12)
+table(Modules)
+
+ModuleColors <- labels2colors(Modules) #assigns each module number a color
+table(ModuleColors)
+
+plotDendroAndColors(geneTree, ModuleColors,"Module",
+dendroLabels = FALSE, hang = 0.03,
+addGuide = TRUE, guideHang = 0.05,
+main = "Gene dendrogram and module colors")
+```
+
+```{r}
+MElist <- moduleEigengenes(data, colors = ModuleColors)
+MEs <- MElist$eigengenes
+head(MEs)
+ME.dissimilarity = 1-cor(MElist$eigengenes, use="complete")
+```
+
+```{r}
+METree = hclust(as.dist(ME.dissimilarity), method = "average") #Clustering eigengenes
+par(mar = c(0,4,2,0)) #setting margin sizes
+par(cex = 0.6);#scaling the graphic
+plot(METree)
+abline(h=.25, col = "red") #a height of .25 corresponds to correlation of .75
+
+```
+
+
+```{r}
+merge <- mergeCloseModules(data, ModuleColors, cutHeight = .25)
+# The merged module colors, assigning one color to each module
+mergedColors = merge$colors
+# Eigengenes of the new merged modules
+mergedMEs = merge$newMEs
+
+
+#check modules for POIs, URPs, 
+#WGCNA also fails to discern between POIs and URPs under our simulated conditions as can be seen by module membership 
+#although the miminum module number choice is arbitrarily chosen
+tail(merge$colors,50)
+```
+
+```{r}
+
+sKME <- signedKME(data, mergedMEs)
+
+```
+
+#selecting features
+
+```{r}
+# #calculate input data relationship to precalculated eigengenes
+# sKME <- signedKME(data, mergedMEs)
+
+
+#select coexpression candidates based on the cluster membership of a set of baits
+#qbar target projection from MASCARA
+q_bar <- colMeans(sKME[baits,])
+R <- sKME[!rownames(sKME) %in% baits,]
+R_TP <- (dot(t(R),q_bar)/dot(q_bar,q_bar))
+
+#ordered list of candidates 
+Candidates <- as.data.frame(R_TP[order(R_TP, decreasing = TRUE)])
+```
+
+
+
+<!-- ```{r} -->
+<!-- plotDendroAndColors(geneTree, cbind(ModuleColors, mergedColors), -->
+<!-- c("Original Module", "Merged Module"), -->
+<!-- dendroLabels = FALSE, hang = 0.03, -->
+<!-- addGuide = TRUE, guideHang = 0.05, -->
+<!-- main = "Gene dendrogram and module colors for original and merged modules") -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- nGenes = ncol(data) -->
+<!-- nSamples = nrow(data) -->
+
+<!-- #  -->
+<!-- # module.trait.correlation = cor(mergedMEs, datTraits, use = "p") #p for pearson correlation coefficient -->
+<!-- # module.trait.Pvalue = corPvalueStudent(module.trait.correlation, nSamples) #calculate the p-value associated with the correlation -->
+
+
+<!-- ``` -->
+
+

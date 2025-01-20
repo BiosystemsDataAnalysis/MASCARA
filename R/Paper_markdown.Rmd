@@ -13,7 +13,6 @@ csl: vancouver.csl
 keep_md: true
 link-citations: yes
 header-includes:
-  - \usepackage{multicol}
   - \usepackage{amsmath}
   - \usepackage{float}
   - \usepackage{bm}
@@ -59,7 +58,7 @@ source("MASCARA_FUNCS.R")
 ```{r, echo = FALSE, include=FALSE}
 library(devtools)
 library(ggplot2)
-library(MetStaT)
+# library(MetStaT)
 library(gASCA)
 library(patchwork)
 library(readxl)
@@ -76,23 +75,24 @@ library(DESeq2)
 library(MASS)
 library(glmnet)
 library(doParallel)
-library(MUVR)
+# library(MUVR)
 library(pheatmap)
-library(caret)
-library(mixOmics)
+# library(caret)
+# library(mixOmics)
 library(cowplot)
 library(reticulate)
 library(biomformat)
-library(DiscriMiner)
+# library(DiscriMiner)
 library(viridis)
 library(directlabels)
 library(ggpmisc)
 library(DescTools)
 library(data.table)
 library(plotly)
-library(ggbreak)
-library(rhmmer)
+# library(ggbreak)
+# library(rhmmer)
 library(pracma)
+library(pls)
 ```
 
 
@@ -125,7 +125,9 @@ When dealing with experimentally designed data, we have to consider two key sour
 
 Figure \@ref(fig:withinbetween) exemplifies between-group and within-group driven correlations from a real dataset (@haiderTranscriptomeAnalysisPhosphate2023). The plots show the relationship between two genes of the POI (*A* and *C*) and the relationship between two genes that are not part of the same pathway (*B* and *D*). The total correlations in both *A* and *B* are high but correlation in *B* is driven by the between-group variation and not by correlations within experimental groups. The within-group correlation is lower than the total in both cases, but there is a clear trend in *C*: P- condition in red. The within group correlation (r) is higher for the first transcript pair (*C*) than the second (*D*), which makes it possible to discern between a POI gene or an URP gene. Hence, we need to distinguish *total CoE* which is calculated on the total variance and *within-group CoE* where the focus is on the shared variance within experimental groups. 
 
-From a plant biology point of view, the between-group and the within-group variance can be quite different. However, both may contain valuable biological information. The between-group variance is in principle larger because groups are the result of treatments that are usually selected because they affect the POI. Within-group variance (variance across replicates), if too large, can be an issue in DE analysis, we argue that in co-expression analysis the information present in this variance can be valuable. Variance between replicates is caused by non-controlled variations in plant development and environmental conditions. One replicate plant within a group may be slightly bigger than the others and therefore respond slightly different to a treatment. This could result in slight differences in bait genes between the replicates, but also the genes that we want to identify with a co-expression analysis. There may be many other factors that are inducing this within-group variance, but it is quite likely that if a factor induces a change in the treatment response in one replicate, that this response difference occurs throughout the entire process or pathway in that one replicate. This means that the within-group variance likely contains valuable information and by averaging out this variance, as is done in differential expression analysis, we are losing information. Not making the distinction between types of variance results in *total CoE* associations driven by the differences between treatment groups as opposed to within group correlations. @haiderTranscriptomeAnalysisPhosphate2023 used ranked Pearson correlations to determine (total) coexpression candidates. Due to such a strong effect of the experiment, many genes were affected on top of the desired SL genes. This masked the within-group correlation between the baits and the targets (remaining unknown SL genes). This problematic issue was also highlighted recently by @saccentiWhatCanGo2023 where group sampling assumptions are investigated. Hence, both from a data analysis as well as from a biological perspective it is relevant to make a distinction between the different types of CoE. The focus of this paper will be on developing methods to investigate within-group CoE.
+From a biological point of view, the between-group and the within-group variance can be quite different. However, both may contain valuable biological information. The between-group variance is in principle larger because groups are the result of treatments that are usually selected because they affect the POI. Within-group variance (variance across replicates), if too large, can be an issue in DE analysis, we argue that in co-expression analysis the information present in this variance can be valuable. Variance between replicates is caused by non-controlled variations in plant development and environmental conditions. One replicate plant within a group may be slightly bigger than the others and therefore respond slightly different to a treatment. This could result in slight differences in bait genes between the replicates, but also the genes that we want to identify with a co-expression analysis.
+loblolly pine cones @liExtensiveVariationDroughtInduced2021
+There may be many other factors that are inducing this within-group variance, but it is quite likely that if a factor induces a change in the treatment response in one replicate, that this response difference occurs throughout the entire process or pathway in that one replicate. This means that the within-group variance likely contains valuable information and by averaging out this variance, as is done in differential expression analysis, we are losing information. Not making the distinction between types of variance results in *total CoE* associations driven by the differences between treatment groups as opposed to within group correlations. @haiderTranscriptomeAnalysisPhosphate2023 used ranked Pearson correlations to determine (total) coexpression candidates. Due to such a strong effect of the experiment, many genes were affected on top of the desired SL genes. This masked the within-group correlation between the baits and the targets (remaining unknown SL genes). This problematic issue was also highlighted recently by @saccentiWhatCanGo2023 where group sampling assumptions are investigated. Hence, both from a data analysis as well as from a biological perspective it is relevant to make a distinction between the different types of CoE. The focus of this paper will be on developing methods to investigate within-group CoE.
 
 
 ```{r withinbetween, fig.cap= c("Correlation examples, Pearson’s correlation coefficient (r) indicated in facet titles. Data from @haiderTranscriptomeAnalysisPhosphate2023. X axes, expression levels of MAX1 gene (Os01t0700900–01) in rice, Y axes expression levels of example coexpression candidates, aribitrary units. Top row A-B; *total CoE*, bottom row C-D *within-group CoE* from variance partitioning the data in A-B. Gene pairs in both A and B have strong total correlations. Correlation in A is also exhibited within a group, B has strong total correlations mainly due to the differences between groups. These examples are indistinguishable from eachother without variance partitioning.")}
@@ -135,21 +137,20 @@ a
 
 ```
 
-For a successful coexpression analysis it is necessary to have a predefined set of baits that are already known to be involved in the pathway under study. Methods like ranked correlations and partial least squares regression (PLS; @geladiPartialLeastsquaresRegression1986; @woldCollinearityProblemLinear1984) are able to investigate relationships between a set of baits and the other measured genes. In ranked correlations the relationships are quantified at a bivariate level. In PLS regression the relationships can be investigated in a multivariate way, in its simplest form we can see which genes are most predictive of the expression of one bait. This can be extended to a PLS2 model where relationships are investigated between a set of multiple baits and all other genes. These methods do not by default account for the different variance types discussed above. Hence, they are not directly suitable for within-group CoE. 
+For a successful coexpression analysis it is necessary to have a predefined set of baits that are already known to be involved in the pathway under study. Methods like ranked correlations WGCNA  and partial least squares regression (PLS; @geladiPartialLeastsquaresRegression1986; @woldCollinearityProblemLinear1984) are able to investigate relationships between a set of baits and the other measured genes. In ranked correlations the relationships are quantified at a bivariate level. In PLS regression the relationships can be investigated in a multivariate way, in its simplest form we can see which genes are most predictive of the expression of one bait. This can be extended to a PLS2 model where relationships are investigated between a set of multiple baits and all other genes. These methods do not by default account for the different variance types discussed above. Hence, they are not directly suitable for within-group CoE. 
 
 The most widely known and applied method that investigates variance sources is the analysis of variance (ANOVA; @searleLinearModels1971). ANOVA simultaneous component analysis (ASCA; @smildeANOVAsimultaneousComponentAnalysis2005) and its extension to imbalanced data via the generalised linear model (ASCA+; @thielASCAAPCAExtensions2017) have been developed to combine principal component analysis (PCA) with ANOVA and can therefore account for experimental design in dimension reduction. ASCA is of interest due to the variance partitioning. This is typically used to estimate the effect matrices that are calculated from the design and particularly the within-group variance structure which is maintained in the residuals of the model. Both PLS and ASCA have been used for DE (@augerGeneCoexpressionNetwork2022, @renRNABindingProteins2023, @nuedaDiscoveringGeneExpression2007, @jarmundALASCAPackageLongitudinal2022) and CoE (@guanSRGSSparsePartial2022, @nuedaFunctionalAssessmentTime2009). ASCA and PLS have been combined before in @thissenImprovingAnalysisDesigned2009 creating ANOVA-PLS, however the goal of their study was not coexpression analysis. Neither of these methods are optimal by themselves for CoE in the context of large between group variance with known baits. 
 
 The baits are assumed to be part of the same POI and the remaining uncharacterised targets (POI or RP genes) are assumed to be numerous. Therefore, both the baits and the remainder of the data could be reduced to linear combinations in order to investigate relationships between a set of baits and putative targets. We introduce a new data analysis method called multivariate ASCA residual analysis (MASCARA). MASCARA is motivated by four key factors; (1) the presence of dominant between-group variance caused by the setup of the experiment, as well as, (2) ambient variance (structured effects caused by undocumented environmental factors i.e. temperature, light intensity or soil water content) within the replicates of each experimental group, (3) the need to investigate multivariate relationships and (4) the low number of samples. The method capitalises on ASCA to account for an experimental design and the multivariate analysis capability of PLS2 to find uncharacterised POI genes using a set of baits. Instead of focusing on the variance induced by the experimental design, as is a typical use of ASCA, this variance is removed, and the remaining residual variance is further analysed to investigate the multivariate relationships between baits and the putative targets in terms of within-group CoE. 
 
 
-To explore the utility of MASCARA, the method will be compared to ASCA, PLS2 and correlation analysis illustrated using an example RNAseq dataset (from @haiderTranscriptomeAnalysisPhosphate2023). Furthermore, this dataset is used as a guide to several simulation studies to validate the development of a novel approach to coexpression analysis. For these simulations we emulate both different levels of between- and within-group variance. We test the effects of size of between group differences, number of URP differential genes, measurement noise (random unstructured technical variance), structured ambient variance and number of replicates. The following sections seek to investigate which statistical methods are best suited for POI elucidation when a set of baits is already known and illustrate the benefit of MASCARA. Especially in data coming from experiments designed for differential expression analysis.
+To explore the utility of MASCARA, the method will be compared to ASCA, PLS2 and correlation analysis illustrated using an example RNAseq dataset (from @haiderTranscriptomeAnalysisPhosphate2023) as well as an LCMS dataset from @caldanaHighdensityKineticAnalysis2011. Furthermore, this dataset is used as a guide to several simulation studies to validate the development of a novel approach to coexpression analysis. For these simulations we emulate both different levels of between- and within-group variance. We test the effects of size of between group differences, number of URP differential genes, measurement noise (random unstructured technical variance), structured ambient variance and number of replicates. The following sections seek to investigate which statistical methods are best suited for POI elucidation when a set of baits is already known and illustrate the benefit of MASCARA. Especially in data coming from experiments designed for differential expression analysis.
 
 
 
 
 ```{r, echo = FALSE, include=FALSE}
 baits <- paste0("X_",c(1989:2000))   #501:510
-
 meta <- cbind.data.frame(rep(c(1,-1), each = 12), rep(c(1:4), each = 3), rep(c(-1:-4,1:4), each = 3))
 colnames(meta) <- c("growth_condition","time","interaction")
 ```
@@ -543,12 +544,13 @@ candtab <- gridExtra::tableGrob(CAND_TAB, rows = NULL, theme = theme1)
 
 ```{r,echo = F}
 
-Noise_Tests <- readRDS("Noise_Sim_Coexp_24_01_22.RDS")
+# Noise_Tests <- readRDS("Noise_Sim_Coexp_24_01_22.RDS")
 
+Noise_Tests <- readRDS("Noise_Sim_Coexp_24_06_13.RDS")    #Noise_Sim_Coexp_24_05_24.RDS
 
-names(Noise_Tests) <- c("ASCA", "PLS", "Correlations", "MASCARA")
+names(Noise_Tests) <- c("ASCA", "PLS", "Correlations", "MASCARA", "WGCNA")
 
-Noise_Tests <- Noise_Tests[c("ASCA", "PLS", "Correlations","MASCARA")]
+Noise_Tests <- Noise_Tests[c("ASCA", "PLS", "Correlations", "WGCNA", "MASCARA")]
 Noise_Tests <- lapply(Noise_Tests, narm, keep_col1 = T)
 
 
@@ -582,7 +584,7 @@ for(i in 1:1){
 }
 
 
-for(i in 2:4){
+for(i in 2:5){
   res <- Noise_Tests[[i]][12,]
   RES <- cbind.data.frame(RES,t(res))
 }
@@ -600,8 +602,8 @@ mRES <- melt(RES)
 
 colnames(mRES)[c(2,3)] <- c("Method","F1")
 
-mRES$Noise <- rep(ERs, 4)
-mRES$Main <- rep(main_lev, 4)
+mRES$Noise <- rep(ERs, 5)
+mRES$Main <- rep(main_lev, 5)
 ```
 
 ```{r, echo=FALSE}
@@ -612,7 +614,7 @@ colnames(mRES)[3] <- "GMR"
 mRES$GMR <- log2(mRES$GMR)
 # colnames(mRES)[5] <- "GMR"
 
-mRES$Size_num <- rep(y, 4)
+mRES$Size_num <- rep(y, 5)
 ```
 
 ```{r}
@@ -667,9 +669,11 @@ We can see in Figure \@ref(fig:tc) that MASCARA was neither affected by the pres
 #30 random initial scores, similar noise 
 #parameters, 3-30 replicates per condition. 
 
-Rep_Tests <- readRDS("Noise_Sim_24_01_22_Replicate_Tests.RDS")  
+# Rep_Tests <- readRDS("Noise_Sim_24_01_22_Replicate_Tests.RDS")  
 
-names(Rep_Tests) <- c("ASCA", "PLS","Correlations","MASCARA")
+Rep_Tests <- readRDS("Noise_Sim_24_12_08_Replicate_Tests_3.RDS") #Noise_Sim_24_12_04_Replicate_Tests.RDS  #Noise_Sim_24_06_13_Replicate_Tests.RDS Noise_Sim_24_05_24_Replicate_Tests.RDS
+
+names(Rep_Tests) <- c("ASCA", "PLS","Correlations","MASCARA", "WGCNA")
 
 
 # names(Noise_Tests) <- ms$Method
@@ -678,10 +682,31 @@ Rep_Tests <- lapply(Rep_Tests, narm, keep_col1 = T)
 names <- c()
 l <- 1
 
-y <- rep(c(0.0004,0.002, 0.01),3)      
-x <- rep(25,9)
-nse <- rep(c(0.1,0.2,0.3), each = 3)
-DS <- c(1:9)
+# y <- rep(c(0.0004,0.002, 0.01),3)      
+# x <- rep(25,9)
+# nse <- rep(c(0.1,0.2,0.3), each = 3)
+
+# y <- rep(c(0.008333333, 0.016666667, 0.025000000),3)      
+# x <- rep(30,9)  #100
+# nse <- rep(c(0.2,0.4,0.6), each = 3)
+
+
+m_l <- c(1:5)/10
+
+
+
+
+x <- rep(30,25)  #100  number of Experiment responders (CE) genes  URP
+
+y <- m_l/x[1]     #rep(c(0.008333333, 0.016666667, 0.025000000))
+y <- rep(y,length(y))
+
+
+
+nse <- rep(m_l, each = length(m_l))  #rep(c(0.1,0.2, 0.3, 0.4, 0.5,0.6), each = length(y))
+
+
+DS <- c(1:25)
 
 main_lev <- x*y
 
@@ -716,7 +741,7 @@ for(i in 1){
   RES <- cbind.data.frame(RES,t(res))
 }
 
-for(i in 2:4){
+for(i in 2:5){
   res <- Rep_Tests[[i]][12,]
   RES <- cbind.data.frame(RES,t(res))
 }
@@ -742,9 +767,16 @@ mRES$Replicate_Number <- as.numeric(mRES$Replicate_Number)#, c(3:30))
 
 ```{r}
 
-orders <- c(7,8,9,4,5,6,1,2,3)
+# orders <- c(7,8,9,4,5,6,1,2,3)      # - WARNING -
+orders <- c(21,22,23,24,25,
+            16,17,18,19,20,
+            11,12,13,14,15,
+            6,7,8,9,10,
+            1,2,3,4,5)
 
-max <- max(log2(mRES$F1_Score) + 1)
+
+
+max <- max(log2(mRES$F1_Score) )
 i <- NULL
 l <- 1
 One_Balance <- list()
@@ -755,7 +787,7 @@ for(i in orders){
     stat_summary() +
     ylim(0,max ) +
   labs(subtitle = paste0("CE = ", main_lev[l], " E = ", nse[l]))+
-  theme_dark() +
+  theme_bw() +
       theme(axis.title = element_blank()) 
 
   l <- l + 1
@@ -779,14 +811,14 @@ test_patch <- (One_Balance[[1]] + One_Balance[[2]] + One_Balance[[3]]  + ylab(NU
 #   One_Balance[[3]] + plot_layout(guides = "collect")
 
 
-# tiff("Fig7.tif")
+# tiff("Fig7_new1.tif",width = 960*4, height = 960*4,pointsize = 12, res = 300)
 # ps1 <- grid.arrange(ps, left = "log2(GMR)", bottom = "Replicate Number                     ")
 # dev.off()
 
-a <- knitr::include_graphics("Fig7.tif")
+a <- knitr::include_graphics("Fig7_new1.tif")
 a
 
-
+getwd()
 
 ```
 
@@ -1046,9 +1078,66 @@ ASCA_cands2 <- ASCA_cands2[which(ASCA_cands2[,2] < 0),]
 ASCA_cands2 <- ASCA_cands2[order(ASCA_cands2[,2]),]
 ```
 
+
+
+
+
+```{r}
+      # F_norms <- c(do.call(c,lapply(res_ASCAplus_nb$decomposition, function(x) norm(x[, c(pathway, non_pathway)], type = "F"))), 
+      #            residual = norm(res_ASCAplus_nb$residuals[, c(pathway, non_pathway)], type = "F"))
+      # 
+
+      F_norms <- c(do.call(c,lapply(res_ASCAplus_nb$decomposition, norm, type = "F")), 
+                 residual = norm(res_ASCAplus_nb$residuals, type = "F"))
+
+
+MASCARA <- function(resids, baits){
+  #target projection
+  spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+                          resids[,which(colnames(resids) %in% baits)], ncomp = 2)
+  
+  #####
+  y <- colMeans(spls_res$Yloadings)
+  U <- spls_res$projection
+  UTP <- (dot(t(U),y)/dot(y,y))
+  
+  sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
+  
+  return(list(sPLS_bait_cands,UTP,spls_res,y))
+}
+
+m_res_full <- MASCARA(res_ASCAplus_nb$residuals,baits)
+m_rest <- m_res_full[[3]]$scores %*% t(m_res_full[[3]]$loadings)
+m_baits <- m_res_full[[3]]$Yscores %*% t(m_res_full[[3]]$Yloadings)
+
+m_comb <- cbind.data.frame(m_rest, m_baits)
+
+deflated_perc <- sum(m_res_full[[3]]$Xvar)/m_res_full[[3]]$Xtotvar
+
+
+      F_norms <- c(do.call(c,lapply(res_ASCAplus_nb$decomposition, norm, type = "F")), 
+                 residual = norm(res_ASCAplus_nb$residuals, type = "F"))
+
+F_norms <- c(F_norms, 
+             "CE" = norm(res_ASCAplus_nb$decomposition$growth_condition +
+                           res_ASCAplus_nb$decomposition$`growth_condition:time`, type = "F"),
+             "modelled" = deflated_perc * F_norms["residual"],
+             "noise" = (1-deflated_perc) * F_norms["residual"] )   
+
+F_norms[5:7] / sum(F_norms[5:7])
+
+
+```
+
+
 In the real data from @haiderTranscriptomeAnalysisPhosphate2023 some plants were subjected to massive stress with the phosphate limitation. This is, therefore, reflected by large differences in the transcriptome compared to those with a normal supply of P. This limitation affected many more genes than those directly involved in SL biosynthesis. Furthermore, there appears to be a stronger relationship amongst the SL genes in the ambient variation compared to their correlations with other DE URP genes, as displayed in Figure \@ref(fig:residualdists) where the blue distribution indicates correlations between residuals of the 9 POI transcripts from Figures \@ref(fig:Dataset1-Overview) and \@ref(fig:ASCA-1) and the red indicates correlations between residuals of these 9 and top DE URP genes.
 
+@tajiImportantRolesDrought2002 
+
+@zintaDynamicsMetabolicResponses2018
+
 ```{r residualdists, fig.cap=c("Distributions of Fisher transformed Pearson correlations (supplementary equation \\@ref(eq:Fisher)) in residuals from the ASCA model on the data from @haiderTranscriptomeAnalysisPhosphate2023. Blue indicates correlations between SL pathway genes, red indicates correlations between SL pathway genes and top 10% DE URP genes (upregulated in P- over P+).")}
+library(FNN)
 
 
 cor_val <- function(x){
@@ -1084,6 +1173,159 @@ dens
 # dev.off()
 
 ```
+
+
+```{r}
+GA_ref <- read_xlsx("Rice_Annotation/GA pathway genes-IDs.xlsx")
+GA_ref$ID <- gsub("g","t",GA_ref$ID)
+GAs <- ref[which(gsub("-.*","",ref$Feature) %in% GA_ref$ID),1]
+GAs <- GAs[which(GAs %in% colnames(res_ASCAplus_nb$residuals))]
+
+# pathway <- GAs
+
+
+PSI_ref <-read.table("Rice_Annotation/PSI_genes.txt", sep = "\t", header = T)
+
+
+# Load necessary libraries
+library(reshape2)  # For melt()
+library(ggplot2)   # For ggplot()
+
+# Define the function to calculate Fisher-transformed correlation values
+cor_val <- function(x){
+  cor_res <- cor(x[])
+  cor_res <- 0.5 * log((1 + cor_res) / (1 - cor_res))
+  return(cor_res)
+}
+
+# Calculate correlations for res_ASCAplus_nb$residuals
+# test_residuals <- cor_val(res_ASCAplus_nb$residuals[, pathway])
+
+# pathway <- baits
+
+ASCA_cands2_filtered <- ASCA_cands2[!rownames(ASCA_cands2) %in% pathway, ]
+
+# non_pathway <- PSI_ref[,1]
+# non_pathway <- non_pathway[which(non_pathway %in% rownames(ASCA_cands2_filtered))]
+
+non_pathway <- rownames(ASCA_cands2_filtered[which(ASCA_cands2_filtered$VIP > quantile(ASCA_cands2_filtered$VIP, 0.9)),])#[1:1253]
+
+test2_residuals <- cor_val(res_ASCAplus_nb$residuals[, c(pathway, non_pathway)])
+test2_residuals[upper.tri(test2_residuals, diag = TRUE)] <- NA
+
+mt_residuals <- melt(test2_residuals, na.rm = TRUE)
+
+mt_residuals$group <- "Other"
+mt_residuals$group[mt_residuals$Var1 %in% pathway & mt_residuals$Var2 %in% pathway] <- "SL-SL"
+mt_residuals$group[mt_residuals$Var1 %in% non_pathway & mt_residuals$Var2 %in% pathway] <- "SL-Other"
+
+mt_residuals <- mt_residuals[mt_residuals$group %in% c("SL-SL", "SL-Other"), ]
+colnames(mt_residuals)[3] <- "Correlation"
+
+mt_residuals$Dataset <- "Within"
+
+
+# test_X <- cor_val(X[, pathway])
+
+test2_X <- cor_val(X[, c(pathway, non_pathway)])
+test2_X[upper.tri(test2_X, diag = TRUE)] <- NA
+
+mt_X <- melt(test2_X, na.rm = TRUE)
+
+mt_X$group <- "Other"
+mt_X$group[mt_X$Var1 %in% pathway & mt_X$Var2 %in% pathway] <- "SL-SL"
+mt_X$group[mt_X$Var1 %in% non_pathway & mt_X$Var2 %in% pathway] <- "SL-Other"
+
+mt_X <- mt_X[mt_X$group %in% c("SL-SL", "SL-Other"), ]
+colnames(mt_X)[3] <- "Correlation"
+
+mt_X$Dataset <- "Total"
+
+
+
+
+#deflated residuals:
+# MASCARA <- function(resids, baits){
+#   #target projection
+#   spls_res <- simpls.fit(resids[,-which(colnames(resids) %in% baits)],
+#                           resids[,which(colnames(resids) %in% baits)], ncomp = 3)
+#   
+#   #####
+#   y <- colMeans(spls_res$Yloadings)
+#   U <- spls_res$projection
+#   UTP <- (dot(t(U),y)/dot(y,y))
+#   
+#   sPLS_bait_cands <- as.data.frame(UTP[order(UTP, decreasing = TRUE)])
+#   
+#   return(list(sPLS_bait_cands,UTP,spls_res,y))
+# }
+
+# m_res <- MASCARA(res_ASCAplus_nb$residuals[, c(pathway, non_pathway)],baits)[[3]]
+# 
+# m_rest <- m_res$scores %*% t(m_res$loadings)
+# m_baits <- m_res$Yscores %*% t(m_res$Yloadings)
+# 
+# m_comb <- cbind.data.frame(m_rest, m_baits)
+# 
+# test_m <- cor_val(m_comb[, c(pathway, non_pathway)])
+# test_m[upper.tri(test_m, diag = TRUE)] <- NA
+# 
+# mt_m <- melt(test_m, na.rm = TRUE)
+# 
+# mt_m$group <- "Other"
+# mt_m$group[mt_m$Var1 %in% pathway & mt_m$Var2 %in% pathway] <- "SL-SL"
+# mt_m$group[mt_m$Var1 %in% non_pathway & mt_m$Var2 %in% pathway] <- "SL-Other"
+# 
+# mt_m <- mt_m[mt_m$group %in% c("SL-SL", "SL-Other"), ]
+# colnames(mt_m)[3] <- "Correlation"
+# 
+# mt_m$Dataset <- "Deflated"
+# 
+
+
+
+library(ggpubr)
+
+mt_combined <- rbind(mt_residuals, mt_X)   #   , mt_m
+
+mt_combined$Group_Dataset <- paste(mt_combined$group, mt_combined$Dataset, sep = "_")
+
+mt_combined$Dataset <- factor(mt_combined$Dataset, levels = c("Total", "Within", "Deflated"))
+
+dens1 <- ggplot(mt_combined, aes(x = group, y = Correlation, fill = group)) +
+  geom_violin() +
+  theme_bw() +
+  labs(fill = "Group") +
+  ggtitle("Boxplot of Fisher-Transformed Correlations by Variance Partition") +
+  xlab("Group") +
+  ylab("Correlation") +
+  facet_wrap(~ Dataset) +
+  stat_compare_means() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"  # Remove legend if 'fill' is the same as 'x'
+  )
+
+print(dens1)
+
+
+
+dens <- ggplot(mt_combined, aes(Correlation, fill = group)) + geom_histogram(bins = 140) + theme_bw()  + facet_wrap(~ Dataset)
+
+dens
+
+
+
+# 
+# xkl <- KL.divergence(mt_combined$Correlation[which(mt_combined$Group_Dataset == "SL-Other_Total")], mt_combined$Correlation[which(mt_combined$Group_Dataset == "SL-SL_Total")])
+# 
+# rkl <- KL.divergence(mt_combined$Correlation[which(mt_combined$Group_Dataset == "SL-Other_Within")], mt_combined$Correlation[which(mt_combined$Group_Dataset == "SL-SL_Within")])
+# 
+# plot(xkl, rkl)
+# abline(a=0,b=1)
+```
+
+
 
 ```{r}
 all <- cbind.data.frame(meta[,c("growth_condition","time")], X)
@@ -1141,7 +1383,7 @@ PLOT <- plot1/plot2 + plot_layout(guides = "collect",tag_level = 'new') + plot_a
 # PLOT
 # dev.off()
 
-a <- knitr::include_graphics("Fig9.tiff")
+a <- knitr::include_graphics("Fig9.tif")
 a
 
 ```
