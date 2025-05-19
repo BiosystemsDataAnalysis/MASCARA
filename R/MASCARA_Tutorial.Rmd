@@ -66,7 +66,7 @@ Experiment_responders <- 30
 set.seed(3)
 
 baits <- paste0("X_",c(1985:1988))  
-spikes <- paste0("X_",c(1989:2000))
+spikes <- paste0("X_",c(1989:2000))          #in real data these will be other known genes of a POI and serve as a positive control (or they might not already exist)
 
 sim_data <- Create_Core_DEV_2(nreps = 3, meta = meta, plot = TRUE, 
                         EffectSize = c(X_a_ab = 1.8, time = 1, E = 10, mu = 1, Struc_E = 1), 
